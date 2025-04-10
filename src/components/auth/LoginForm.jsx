@@ -143,7 +143,7 @@ const LoginForm = () => {
         borderRadius="xl"
         bg={formBg}
       >
-        {/* Left side - stylized illustration using gradients (no images) */}
+        {/* Left side - stylized illustration using gradients */}
         <MotionBox 
           initial="hidden"
           animate="visible"

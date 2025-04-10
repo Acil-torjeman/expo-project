@@ -183,10 +183,7 @@ const Topbar = ({ title }) => {
           </Text>
         </HStack>
 
-        {/* Center - Search bar (on larger screens) */}
-        <Box display={{ base: 'none', lg: 'block' }} flex="1" maxW="600px" mx={4}>
-          <SearchBar />
-        </Box>
+        
 
         {/* Right side - Theme toggle, Notifications, messages, profile */}
         <HStack spacing={3}>

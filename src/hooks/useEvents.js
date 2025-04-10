@@ -4,6 +4,7 @@ import { useToast } from '@chakra-ui/react';
 import { useAuth } from '../context/AuthContext';
 import eventService from '../services/event.service';
 import equipmentService from '../services/equipment.service';
+import { getStatusDisplayText } from '../constants/eventConstants';
 
 const useEvents = (initialFilters = {}) => {
   // State
@@ -31,7 +32,7 @@ const useEvents = (initialFilters = {}) => {
   
   // Fetch events list for current organizer
   const fetchEvents = useCallback(async () => {
-    if (!user || !user.id) return;
+    if (!user || !user.id) return [];
     
     setLoading(true);
     setError(null);
@@ -133,29 +134,27 @@ const useEvents = (initialFilters = {}) => {
   }, []);
   
   // Create new event with image
-  const createEvent = useCallback(async (eventData, imageFile = null) => {
+  const createEvent = useCallback(async (eventData, imageFile = null, showToast = true) => {
     setLoading(true);
     
     try {
-      // Create a copy of the form data without the equipment IDs
-      // The backend will handle equipment association
-      const eventDataToSend = { ...eventData };
-      
-      // First create the event
-      const newEvent = await eventService.createEvent(eventDataToSend);
+      // Create the event
+      const newEvent = await eventService.createEvent(eventData);
       
       // If image file is provided, upload it
       if (imageFile) {
         await eventService.uploadEventImage(newEvent._id, imageFile);
       }
       
-      toast({
-        title: 'Success',
-        description: 'Event created successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      if (showToast) {
+        toast({
+          title: 'Success',
+          description: 'Event created successfully',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
       
       // Refresh the list
       await fetchEvents();
@@ -175,7 +174,7 @@ const useEvents = (initialFilters = {}) => {
   }, [fetchEvents, toast]);
 
   // Update event
-  const updateEvent = useCallback(async (id, eventData, imageFile = null) => {
+  const updateEvent = useCallback(async (id, eventData, imageFile = null, showToast = true) => {
     setLoading(true);
     try {
       // Update the event data
@@ -212,13 +211,15 @@ const useEvents = (initialFilters = {}) => {
         }
       }
       
-      toast({
-        title: 'Success',
-        description: 'Event updated successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      if (showToast) {
+        toast({
+          title: 'Success',
+          description: 'Event updated successfully',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
       
       // Refresh the list
       await fetchEvents();
@@ -237,19 +238,60 @@ const useEvents = (initialFilters = {}) => {
     }
   }, [fetchEvents, toast]);
   
+  // Update event status
+  const updateEventStatus = useCallback(async (id, newStatus, reason = '', showToast = true) => {
+    setLoading(true);
+    try {
+      const updatedEvent = await updateEvent(
+        id, 
+        {
+          status: newStatus,
+          ...(reason && { statusReason: reason })
+        }, 
+        null, 
+        false // Don't show general update toast
+      );
+      
+      if (showToast) {
+        toast({
+          title: 'Status updated',
+          description: `Event status has been updated to ${getStatusDisplayText(newStatus)}`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+      
+      return updatedEvent;
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to update event status',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [updateEvent, toast]);
+  
   // Upload event image
-  const uploadEventImage = useCallback(async (id, imageFile) => {
+  const uploadEventImage = useCallback(async (id, imageFile, showToast = true) => {
     setLoading(true);
     try {
       const updatedEvent = await eventService.uploadEventImage(id, imageFile);
       
-      toast({
-        title: 'Success',
-        description: 'Event image uploaded successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      if (showToast) {
+        toast({
+          title: 'Success',
+          description: 'Event image uploaded successfully',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
       
       // Refresh the list
       await fetchEvents();
@@ -269,18 +311,20 @@ const useEvents = (initialFilters = {}) => {
   }, [fetchEvents, toast]);
   
   // Delete event
-  const deleteEvent = useCallback(async (id) => {
+  const deleteEvent = useCallback(async (id, showToast = true) => {
     setLoading(true);
     try {
       await eventService.deleteEvent(id);
       
-      toast({
-        title: 'Success',
-        description: 'Event deleted successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      if (showToast) {
+        toast({
+          title: 'Success',
+          description: 'Event deleted successfully',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
       
       // Refresh the list
       await fetchEvents();
@@ -301,18 +345,20 @@ const useEvents = (initialFilters = {}) => {
   }, [fetchEvents, toast]);
   
   // Associate plan with event
-  const associatePlan = useCallback(async (eventId, planId) => {
+  const associatePlan = useCallback(async (eventId, planId, showToast = true) => {
     setLoading(true);
     try {
       const updatedEvent = await eventService.associatePlan(eventId, planId);
       
-      toast({
-        title: 'Success',
-        description: 'Floor plan associated successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      if (showToast) {
+        toast({
+          title: 'Success',
+          description: 'Floor plan associated successfully',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
       
       // Refresh the list
       await fetchEvents();
@@ -332,18 +378,20 @@ const useEvents = (initialFilters = {}) => {
   }, [fetchEvents, toast]);
   
   // Dissociate plan from event
-  const dissociatePlan = useCallback(async (eventId) => {
+  const dissociatePlan = useCallback(async (eventId, showToast = true) => {
     setLoading(true);
     try {
       const updatedEvent = await eventService.dissociatePlan(eventId);
       
-      toast({
-        title: 'Success',
-        description: 'Floor plan removed successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+      if (showToast) {
+        toast({
+          title: 'Success',
+          description: 'Floor plan removed successfully',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
       
       // Refresh the list
       await fetchEvents();
@@ -424,6 +472,7 @@ const useEvents = (initialFilters = {}) => {
     resetFilters,
     createEvent,
     updateEvent,
+    updateEventStatus, // Nouvelle méthode spécifique pour le changement de statut
     deleteEvent,
     uploadEventImage,
     associatePlan,

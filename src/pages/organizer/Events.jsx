@@ -50,6 +50,7 @@ import { getStatusColorScheme, getStatusDisplayText } from '../../constants/even
 import { getEventImageUrl } from '../../utils/fileUtils';
 import ConfirmDialog from '../../components/common/ui/ConfirmDialog';
 import eventService from '../../services/event.service';
+
 // Use proper motion component
 const MotionBox = motion.div;
 
@@ -61,7 +62,6 @@ const Events = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [viewEventId, setViewEventId] = useState(null);
  
-  
   // Get events data and functions from custom hook
   const {
     events,
@@ -144,7 +144,6 @@ const Events = () => {
     onStatusOpen();
   };
   
-  
   // Handle delete event
   const handleDeleteEvent = (event) => {
     setSelectedEvent(event);
@@ -156,25 +155,12 @@ const Events = () => {
     if (!selectedEvent) return;
     
     try {
+      // Supprimez d'abord le toast du hook en modifiant useEvents.js pour accepter showToast
       await deleteEvent(selectedEvent._id);
       onDeleteClose();
       setSelectedEvent(null);
-      
-      toast({
-        title: 'Event deleted',
-        description: 'The event has been deleted successfully.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete event',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      // Les erreurs sont gérées dans le hook
     }
   };
   
@@ -186,22 +172,9 @@ const Events = () => {
         statusReason: reason 
       });
       
-      toast({
-        title: 'Status updated',
-        description: `Event status has been updated to ${getStatusDisplayText(newStatus)}`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
+      onStatusClose();
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update event status',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-      throw error;
+      // Les erreurs sont gérées dans le hook
     }
   };
   
@@ -232,14 +205,8 @@ const Events = () => {
       setSelectedEvent(null);
       return event;
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'An error occurred',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-      throw error;
+      // Les erreurs sont gérées dans le hook
+      return null;
     }
   };
   
@@ -516,40 +483,39 @@ const Events = () => {
                     {getStatusDisplayText(event.status)}
                   </Badge>
                   
-                  {/* Event image if available */}
                   {/* Event image or fallback icon */}
-                    <Box height="120px" overflow="hidden" bg="gray.100">
-                      {event.imagePath ? (
-                        <img 
-                          src={getEventImageUrl(event.imagePath)}
-                          alt={event.name}
-                          style={{ 
-                            width: '100%', 
-                            height: '100%', 
-                            objectFit: 'cover',
-                          }}
-                          onError={(e) => {
-                            // Si l'image ne se charge pas, on affiche l'icône à la place
-                            e.target.style.display = 'none';
-                            e.target.parentElement.innerHTML = `
-                              <div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A0AEC0" stroke-width="2">
-                                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                              </div>
-                            `;
-                          }}
-                        />
-                      ) : (
-                        // Si aucune image n'est définie, on affiche l'icône directement
-                        <Flex height="100%" width="100%" align="center" justify="center">
-                          <Icon as={FiCalendar} boxSize="40px" color="gray.400" />
-                        </Flex>
-                      )}
-                    </Box>
+                  <Box height="120px" overflow="hidden" bg="gray.100">
+                    {event.imagePath ? (
+                      <img 
+                        src={getEventImageUrl(event.imagePath)}
+                        alt={event.name}
+                        style={{ 
+                          width: '100%', 
+                          height: '100%', 
+                          objectFit: 'cover',
+                        }}
+                        onError={(e) => {
+                          // Si l'image ne se charge pas, on affiche l'icône à la place
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = `
+                            <div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A0AEC0" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                              </svg>
+                            </div>
+                          `;
+                        }}
+                      />
+                    ) : (
+                      // Si aucune image n'est définie, on affiche l'icône directement
+                      <Flex height="100%" width="100%" align="center" justify="center">
+                        <Icon as={FiCalendar} boxSize="40px" color="gray.400" />
+                      </Flex>
+                    )}
+                  </Box>
                   
                   <CardBody p={4}>
                     <Heading as="h3" size="md" mb={2} noOfLines={2} pr={16}>
@@ -608,7 +574,6 @@ const Events = () => {
                         }}
                       />
                       
-                      
                       <IconButton
                         icon={<FiTrash2 />}
                         aria-label="Delete event"
@@ -657,7 +622,6 @@ const Events = () => {
         onEdit={handleEditEvent}
         onDelete={handleDeleteEvent}
         onChangeStatus={handleStatusChange}
-        
       />
       
       {/* Event Status Modal */}
@@ -669,16 +633,16 @@ const Events = () => {
       />
       
       {/* Delete Confirmation Dialog */}
-        <ConfirmDialog
-          isOpen={isDeleteOpen}
-          onClose={onDeleteClose}
-          title="Delete Event"
-          body={`Are you sure you want to delete ${selectedEvent?.name}? This action cannot be undone.`}
-          confirmText="Delete"
-          cancelText="Cancel"
-          confirmColorScheme="red"
-          onConfirm={confirmDelete}
-        />
+      <ConfirmDialog
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
+        title="Delete Event"
+        body={`Are you sure you want to delete ${selectedEvent?.name}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColorScheme="red"
+        onConfirm={confirmDelete}
+      />
     </DashboardLayout>
   );
 };
