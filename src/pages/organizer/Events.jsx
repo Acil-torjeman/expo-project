@@ -49,7 +49,7 @@ import useEvents from '../../hooks/useEvents';
 import { getStatusColorScheme, getStatusDisplayText } from '../../constants/eventConstants';
 import { getEventImageUrl } from '../../utils/fileUtils';
 import ConfirmDialog from '../../components/common/ui/ConfirmDialog';
-
+import eventService from '../../services/event.service';
 // Use proper motion component
 const MotionBox = motion.div;
 
@@ -121,9 +121,21 @@ const Events = () => {
   };
   
   // Handle edit event
-  const handleEditEvent = (event) => {
-    setSelectedEvent(event);
-    onEditOpen();
+  const handleEditEvent = async (event) => {
+    try {
+      // Fetch the complete event data including equipment IDs
+      const fullEvent = await eventService.getEventById(event._id);
+      setSelectedEvent(fullEvent);
+      onEditOpen();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load event details',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
   
   // Handle status change
@@ -171,7 +183,7 @@ const Events = () => {
     try {
       await updateEvent(eventId, {
         status: newStatus,
-        ...(reason && { statusReason: reason })
+        statusReason: reason 
       });
       
       toast({

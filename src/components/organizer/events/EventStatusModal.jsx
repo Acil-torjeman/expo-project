@@ -1,5 +1,5 @@
 ﻿// src/components/organizer/events/EventStatusModal.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -18,7 +18,6 @@ import {
   Badge,
   Stack,
   useColorModeValue,
-  Box,
   Alert,
   AlertIcon,
 } from '@chakra-ui/react';
@@ -30,12 +29,18 @@ const EventStatusModal = ({
   event,
   onUpdateStatus,
 }) => {
-  // Tous les hooks doivent être déclarés d'abord, sans condition
-  const [selectedStatus, setSelectedStatus] = useState(
-    event?.status || EventStatus.DRAFT
-  );
+  const [selectedStatus, setSelectedStatus] = useState(EventStatus.DRAFT);
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Reset state when event changes or modal opens
+  useEffect(() => {
+    if (event && isOpen) {
+      setSelectedStatus(event.status || EventStatus.DRAFT);
+      setReason('');
+    }
+  }, [event, isOpen]);
+  
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   
@@ -93,7 +98,6 @@ const EventStatusModal = ({
   
   const alertMessage = getAlertMessage();
 
-  // Rendu conditionnel du contenu plutôt que du composant entier
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalOverlay backdropFilter="blur(5px)" />

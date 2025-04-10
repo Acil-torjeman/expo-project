@@ -2,12 +2,15 @@
 import React from 'react';
 import LoginForm from '../../components/auth/LoginForm';
 import PublicLayout from '../../layouts/PublicLayout';
+import PublicHeader from '../../components/layout/PublicHeader';
 
 const Login = () => {
   return (
-    <PublicLayout isFullHeight={true}>
-      <LoginForm />
-    </PublicLayout>
+    
+    <><PublicHeader />
+    <LoginForm /></>
+      
+    
   );
 };
 

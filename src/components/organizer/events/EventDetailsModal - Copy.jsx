@@ -352,7 +352,7 @@ const EventDetailsModal = ({
                       
                       <HStack spacing={2} mb={3}>
                         <Box as={FiClock} color="teal.500" />
-                        <Text fontWeight="medium">Open hours:</Text>
+                        <Text fontWeight="medium">Hours:</Text>
                         <Text>{event.openingHours}</Text>
                       </HStack>
                       
@@ -414,14 +414,7 @@ const EventDetailsModal = ({
                       )}
                     </Box>
                   )}
-                        {event.statusReason && (
-                          <Box mt={2}>
-                            <Text fontWeight="medium" fontSize="sm">Status Change Reason:</Text>
-                            <Text fontSize="sm" color="gray.600" fontStyle="italic">
-                              "{event.statusReason}"
-                            </Text>
-                          </Box>
-                        )}
+                  
                   {/* Description section */}
                   <Box>
                     <Heading as="h3" size="md" mb={3}>

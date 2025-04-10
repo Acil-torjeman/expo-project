@@ -128,15 +128,16 @@ const LoginForm = () => {
     <Flex 
       align="center" 
       justify="center" 
-      m="0 auto" 
-      width="100%" 
+      minH="100vh"
+      minW="100vw"
+      
       maxW="1200px" 
       px={4}
       bg={useColorModeValue('transparent', 'gray.900')}
     >
       <Flex 
         direction={{ base: 'column', lg: 'row' }}
-        width="100%"
+        idth="100%"
         overflow="hidden"
         boxShadow="xl"
         borderRadius="xl"
