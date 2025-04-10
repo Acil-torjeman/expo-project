@@ -137,7 +137,7 @@ const LoginForm = () => {
     >
       <Flex 
         direction={{ base: 'column', lg: 'row' }}
-        idth="100%"
+        width="100%"
         overflow="hidden"
         boxShadow="xl"
         borderRadius="xl"
