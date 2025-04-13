@@ -211,7 +211,36 @@ class EventService {
       return [];
     }
   }
-
+ 
+/**
+ * Get all public events with optional filters
+ * @param {string} search - Optional search term
+ * @param {string} sector - Optional sector filter
+ * @param {boolean} upcoming - Optional filter for upcoming events
+ * @returns {Promise<Array>} Events array
+ */
+async getPublicEvents(search = '', sector = '', upcoming = true) {
+  try {
+    // Utiliser la route public-events
+    let url = '/events/public-events?';
+    
+    if (search) {
+      url += `search=${encodeURIComponent(search)}&`;
+    }
+    
+    if (sector) {
+      url += `sector=${encodeURIComponent(sector)}&`;
+    }
+    
+    url += `upcoming=${upcoming ? 'true' : 'false'}`;
+    
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    this._handleError(error, 'Error fetching public events');
+    return [];
+  }
+}
   /**
    * Associate equipment with an event
    * @param {string} eventId - Event ID

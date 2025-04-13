@@ -6,8 +6,8 @@ import NotFound from '../pages/NotFound';
 
 // Exhibitor pages
 import ExhibitorDashboard from '../pages/exhibitor/Dashboard';
-import ExhibitorEvents from '../pages/exhibitor/Events';
-import ExhibitorMessages from '../pages/exhibitor/Messages';
+import ExhibitorEvents from '../pages/Exhibitor/Events';
+import ExhibitorMessages from '../pages/Exhibitor/Messages';
 import ExhibitorRegistrations from '../pages/exhibitor/Registrations';
 import ExhibitorStands from '../pages/exhibitor/Stands';
 import ExhibitorEquipment from '../pages/exhibitor/Equipment';
@@ -102,8 +102,7 @@ const ExhibitorRoutes = () => {
           </ProtectedRoute>
         } 
       />
-      
-      {/* Notifications */}
+      {/* events */}
       <Route 
         path="notifications" 
         element={
