@@ -7,7 +7,6 @@ import {
   Container,
   Divider,
   Flex,
-  FormControl,
   Grid,
   GridItem,
   Heading,
@@ -15,22 +14,14 @@ import {
   Icon,
   Image,
   SimpleGrid,
-  Skeleton,
   Spinner,
   Tag,
   Text,
-  Textarea,
   useColorModeValue,
   useToast,
   VStack,
   Badge,
   Avatar,
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogContent,
-  AlertDialogOverlay,
   useDisclosure,
 } from '@chakra-ui/react';
 import {
@@ -49,7 +40,9 @@ import DashboardLayout from '../../layouts/DashboardLayout';
 import { getEventImageUrl } from '../../utils/fileUtils';
 import eventService from '../../services/event.service';
 import registrationService from '../../services/registration.service';
+import exhibitorService from '../../services/exhibitor.service';
 import { useAuth } from '../../context/AuthContext';
+import RegistrationModal from '../../components/exhibitor/events/RegistrationModal';
 
 // Motion components
 const MotionBox = motion(Box);
@@ -61,15 +54,12 @@ const EventDetail = () => {
   const toast = useToast();
   const { user, isAuthenticated } = useAuth();
   
-  // Ref for the registration dialog
-  const cancelRef = React.useRef();
-  
   // States
   const [event, setEvent] = useState(null);
   const [exhibitors, setExhibitors] = useState([]);
+  const [exhibitor, setExhibitor] = useState(null);  // Current user's exhibitor data
   const [loading, setLoading] = useState(true);
   const [registrationLoading, setRegistrationLoading] = useState(false);
-  const [participationNote, setParticipationNote] = useState('');
   const [userRegistration, setUserRegistration] = useState(null);
   
   // Dialog state
@@ -97,6 +87,15 @@ const EventDetail = () => {
         
         // Check if current user has already registered
         if (isAuthenticated && user) {
+          // Fetch exhibitor profile
+          try {
+            const exhibitorData = await exhibitorService.getByUserId(user.id);
+            setExhibitor(exhibitorData);
+          } catch (exhibitorError) {
+            console.error('Error fetching exhibitor profile:', exhibitorError);
+          }
+          
+          // Get user registrations
           const userRegs = await registrationService.getMyRegistrations();
           const eventRegistration = userRegs.find(reg => 
             reg.event && (reg.event._id === eventId || reg.event === eventId)
@@ -155,7 +154,7 @@ const EventDetail = () => {
   };
   
   // Handle registration
-  const handleRegister = async () => {
+  const handleRegister = async (registrationData) => {
     if (!isAuthenticated) {
       toast({
         title: 'Authentication required',
@@ -170,10 +169,7 @@ const EventDetail = () => {
     
     setRegistrationLoading(true);
     try {
-      await registrationService.registerForEvent({
-        eventId,
-        participationNote
-      });
+      await registrationService.registerForEvent(registrationData);
       
       toast({
         title: 'Registration Submitted',
@@ -546,190 +542,143 @@ const EventDetail = () => {
             </GridItem>
             
             {/* Sidebar - Official Exhibitors */}
-<GridItem>
-  <MotionBox
-    bg={bgColor}
-    borderRadius="lg"
-    boxShadow="sm"
-    borderWidth="1px"
-    borderColor={borderColor}
-    overflow="hidden"
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5, delay: 0.6 }}
-  >
-    <Box p={6} bg="teal.500" color="white">
-      <Heading size="md">Official Exhibitors</Heading>
-      <Text mt={1}>
-        Companies that have confirmed their participation
-      </Text>
-    </Box>
-    
-    <Box p={6}>
-      {exhibitors.length === 0 ? (
-        <Flex 
-          direction="column" 
-          align="center" 
-          justify="center"
-          py={10}
-          color={mutedColor}
-        >
-          <Icon as={FiUsers} boxSize={12} opacity={0.5} mb={4} />
-          <Text fontSize="lg" fontWeight="medium">
-            No confirmed exhibitors yet
-          </Text>
-          <Text textAlign="center" mt={2}>
-            Be one of the first companies to register for this event!
-          </Text>
-        </Flex>
-      ) : (
-        <VStack spacing={5} align="stretch" divider={<Divider />}>
-          {exhibitors.map((registration) => {
-            const company = registration.exhibitor?.company;
-            return company ? (
-              <Box key={registration._id}>
-                <Flex align="center">
-                  <Avatar 
-                    size="md" 
-                    name={company.companyName}
-                    src={company.companyLogoPath ? `/files/uploads/organization-logos/${company.companyLogoPath}` : undefined}
-                    mr={4}
-                  />
-                  <Box>
-                    <Text fontWeight="bold">{company.companyName}</Text>
-                    <Text fontSize="sm" color={mutedColor}>
-                      {company.country}
-                    </Text>
-                    {company.sector && (
-                      <Tag size="sm" colorScheme="teal" mt={1}>
-                        {company.sector}
-                      </Tag>
-                    )}
-                  </Box>
-                </Flex>
-                
-                {company.companyDescription && (
-                  <Text 
-                    mt={2} 
-                    fontSize="sm" 
-                    color={mutedColor}
-                    noOfLines={2}
-                  >
-                    {company.companyDescription}
+            <GridItem>
+              <MotionBox
+                bg={bgColor}
+                borderRadius="lg"
+                boxShadow="sm"
+                borderWidth="1px"
+                borderColor={borderColor}
+                overflow="hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
+              >
+                <Box p={6} bg="teal.500" color="white">
+                  <Heading size="md">Official Exhibitors</Heading>
+                  <Text mt={1}>
+                    Companies that have confirmed their participation
                   </Text>
-                )}
+                </Box>
                 
-                {/* Add the stands information here */}
-                {registration.stands && registration.stands.length > 0 && (
-                  <Box mt={2}>
-                    <Text fontSize="sm" color={mutedColor}>
-                      Stands: {registration.stands.map(stand => 
-                        `#${stand.number}${stand.type ? ` (${stand.type})` : ''}`
-                      ).join(', ')}
-                    </Text>
-                  </Box>
-                )}
-              </Box>
-            ) : null;
-          })}
-        </VStack>
-      )}
-    </Box>
-  </MotionBox>
-  
-  {/* Organizer Info */}
-  {event.organizer && (
-    <MotionBox
-      mt={6}
-      bg={bgColor}
-      borderRadius="lg"
-      boxShadow="sm"
-      borderWidth="1px"
-      borderColor={borderColor}
-      p={6}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.7 }}
-    >
-      <Heading size="md" mb={4}>Event Organizer</Heading>
-      <Flex align="center">
-        <Avatar 
-          size="lg" 
-          name={event.organizer.username || event.organizer.email}
-          mr={4}
-        />
-        <Box>
-          <Text fontWeight="bold">
-            {event.organizer.username || event.organizer.email}
-          </Text>
-          <Text fontSize="sm" color={mutedColor}>
-            Event Organizer
-          </Text>
-        </Box>
-      </Flex>
-    </MotionBox>
-  )}
-</GridItem>
+                <Box p={6}>
+                  {exhibitors.length === 0 ? (
+                    <Flex 
+                      direction="column" 
+                      align="center" 
+                      justify="center"
+                      py={10}
+                      color={mutedColor}
+                    >
+                      <Icon as={FiUsers} boxSize={12} opacity={0.5} mb={4} />
+                      <Text fontSize="lg" fontWeight="medium">
+                        No confirmed exhibitors yet
+                      </Text>
+                      <Text textAlign="center" mt={2}>
+                        Be one of the first companies to register for this event!
+                      </Text>
+                    </Flex>
+                  ) : (
+                    <VStack spacing={5} align="stretch" divider={<Divider />}>
+                      {exhibitors.map((registration) => {
+                        const company = registration.exhibitor?.company;
+                        return company ? (
+                          <Box key={registration._id}>
+                            <Flex align="center">
+                              <Avatar 
+                                size="md" 
+                                name={company.companyName}
+                                src={company.companyLogoPath ? `/files/uploads/organization-logos/${company.companyLogoPath}` : undefined}
+                                mr={4}
+                              />
+                              <Box>
+                                <Text fontWeight="bold">{company.companyName}</Text>
+                                <Text fontSize="sm" color={mutedColor}>
+                                  {company.country}
+                                </Text>
+                                {company.sector && (
+                                  <Tag size="sm" colorScheme="teal" mt={1}>
+                                    {company.sector}
+                                  </Tag>
+                                )}
+                              </Box>
+                            </Flex>
+                            
+                            {company.companyDescription && (
+                              <Text 
+                                mt={2} 
+                                fontSize="sm" 
+                                color={mutedColor}
+                                noOfLines={2}
+                              >
+                                {company.companyDescription}
+                              </Text>
+                            )}
+                            
+                            {/* Add the stands information here */}
+                            {registration.stands && registration.stands.length > 0 && (
+                              <Box mt={2}>
+                                <Text fontSize="sm" color={mutedColor}>
+                                  Stands: {registration.stands.map(stand => 
+                                    `#${stand.number}${stand.type ? ` (${stand.type})` : ''}`
+                                  ).join(', ')}
+                                </Text>
+                              </Box>
+                            )}
+                          </Box>
+                        ) : null;
+                      })}
+                    </VStack>
+                  )}
+                </Box>
+              </MotionBox>
+              
+              {/* Organizer Info */}
+              {event.organizer && (
+                <MotionBox
+                  mt={6}
+                  bg={bgColor}
+                  borderRadius="lg"
+                  boxShadow="sm"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  p={6}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.7 }}
+                >
+                  <Heading size="md" mb={4}>Event Organizer</Heading>
+                  <Flex align="center">
+                    <Avatar 
+                      size="lg" 
+                      name={event.organizer.username || event.organizer.email}
+                      mr={4}
+                    />
+                    <Box>
+                      <Text fontWeight="bold">
+                        {event.organizer.username || event.organizer.email}
+                      </Text>
+                      <Text fontSize="sm" color={mutedColor}>
+                        Event Organizer
+                      </Text>
+                    </Box>
+                  </Flex>
+                </MotionBox>
+              )}
+            </GridItem>
           </Grid>
         </Container>
       </MotionBox>
       
-      {/* Registration Dialog */}
-      <AlertDialog
+      {/* Registration Modal Component */}
+      <RegistrationModal
         isOpen={isOpen}
-        leastDestructiveRef={cancelRef}
         onClose={onClose}
-      >
-        <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Register for {event.name}
-            </AlertDialogHeader>
-            
-            <AlertDialogBody>
-              <Text mb={4}>
-                This will submit your registration request for this event. Your registration will need to be approved by the organizer.
-              </Text>
-              
-              <FormControl>
-                <Text fontWeight="medium" mb={2}>
-                  Participation Note (Optional)
-                </Text>
-                <Textarea
-                  placeholder="Tell the organizer more about your interest in this event..."
-                  value={participationNote}
-                  onChange={(e) => setParticipationNote(e.target.value)}
-                  rows={4}
-                />
-              </FormControl>
-              
-              <Box mt={4} p={3} bg="blue.50" borderRadius="md">
-                <HStack spacing={2} color="blue.700">
-                  <Icon as={FiInfo} />
-                  <Text fontWeight="medium">What happens next?</Text>
-                </HStack>
-                <Text fontSize="sm" color="blue.700" mt={1}>
-                  After approval, you'll be able to select stands and equipment for your participation.
-                </Text>
-              </Box>
-            </AlertDialogBody>
-            
-            <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                colorScheme="teal"
-                ml={3}
-                onClick={handleRegister}
-                isLoading={registrationLoading}
-              >
-                Submit Registration
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
+        event={event}
+        exhibitor={exhibitor}
+        onRegister={handleRegister}
+        isRegistering={registrationLoading}
+      />
     </DashboardLayout>
   );
 };
