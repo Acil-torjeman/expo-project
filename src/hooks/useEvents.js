@@ -38,11 +38,12 @@ const useEvents = (initialFilters = {}) => {
     setError(null);
     
     try {
-      // Fetch events for the current organizer
-      const data = await eventService.getOrganizerEvents(user.id);
+      // Try direct API call with axios instead
+      const response = await api.get('/events/organizer/' + user.id);
+      const data = response.data || [];
       
-      // Filter events based on current filters
-      let filteredData = [...data];
+      // Log what we received
+      console.log('Events received:', data);
       
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();

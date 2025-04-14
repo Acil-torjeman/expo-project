@@ -22,6 +22,8 @@ import {
 } from '@chakra-ui/react';
 import { FiUser, FiBriefcase, FiMail, FiPhone, FiMapPin, FiInfo, FiFileText } from 'react-icons/fi';
 import { getStatusColorScheme, getStatusDisplayText } from '../../../constants/registrationConstants';
+import { getFileUrl } from '../../../utils/fileUtils';
+import apiConfig from '../../../config/api.config';
 
 const RegistrationDetailsModal = ({
   isOpen,
@@ -33,10 +35,11 @@ const RegistrationDetailsModal = ({
 }) => {
   if (!registration) return null;
   
-  // Extract exhibitor and company info
+  // Extract exhibitor and company info safely with fallbacks
   const exhibitor = registration.exhibitor || {};
   const company = exhibitor.company || {};
   const user = exhibitor.user || {};
+  const event = registration.event || {};
   
   // Format date
   const formatDate = (dateString) => {
@@ -73,7 +76,7 @@ const RegistrationDetailsModal = ({
           {/* Event details */}
           <Box mb={4} p={4} bg={sectionBg} borderRadius="md">
             <Heading size="sm" mb={2}>Event Information</Heading>
-            <Text><strong>Event:</strong> {registration.event?.name || 'Unknown Event'}</Text>
+            <Text><strong>Event:</strong> {event?.name || 'Unknown Event'}</Text>
             <Text><strong>Registration Date:</strong> {formatDate(registration.createdAt)}</Text>
             
             {registration.status === 'approved' && registration.approvalDate && (
@@ -91,22 +94,22 @@ const RegistrationDetailsModal = ({
             <VStack align="start" spacing={2}>
               <HStack>
                 <Icon as={FiUser} color="teal.500" />
-                <Text><strong>Representative:</strong> {user.username || user.email || 'N/A'}</Text>
+                <Text><strong>Representative:</strong> {user?.username || user?.email || 'N/A'}</Text>
               </HStack>
               
               <HStack>
                 <Icon as={FiMail} color="teal.500" />
-                <Text><strong>Email:</strong> {user.email || 'N/A'}</Text>
+                <Text><strong>Email:</strong> {user?.email || 'N/A'}</Text>
               </HStack>
               
               <HStack>
                 <Icon as={FiInfo} color="teal.500" />
-                <Text><strong>Function:</strong> {exhibitor.representativeFunction || 'N/A'}</Text>
+                <Text><strong>Function:</strong> {exhibitor?.representativeFunction || 'N/A'}</Text>
               </HStack>
               
               <HStack>
                 <Icon as={FiPhone} color="teal.500" />
-                <Text><strong>Contact:</strong> {formatPhone(exhibitor.personalPhoneCode, exhibitor.personalPhone)}</Text>
+                <Text><strong>Contact:</strong> {formatPhone(exhibitor?.personalPhoneCode, exhibitor?.personalPhone)}</Text>
               </HStack>
             </VStack>
           </Box>
@@ -118,35 +121,48 @@ const RegistrationDetailsModal = ({
             <Heading size="sm" mb={3}>Company Information</Heading>
             <HStack mb={3}>
               <Avatar 
-                name={company.companyName} 
-                src={company.companyLogoPath ? `/uploads/organization-logos/${company.companyLogoPath}` : undefined}
+                name={company?.companyName || 'Unknown Company'} 
+                src={company?.companyLogoPath ? 
+                  getFileUrl(`${apiConfig.UPLOADS.LOGOS}/${company.companyLogoPath}`) : 
+                  undefined
+                }
                 size="md"
               />
               <VStack align="start" spacing={0}>
-                <Text fontWeight="bold">{company.companyName || 'N/A'}</Text>
-                <Text fontSize="sm" color="gray.500">{company.country || 'N/A'}</Text>
+                <Text fontWeight="bold">{company?.companyName || 'N/A'}</Text>
+                <Text fontSize="sm" color="gray.500">{company?.country || 'N/A'}</Text>
               </VStack>
             </HStack>
             
             <VStack align="start" spacing={2} mt={2}>
               <HStack>
                 <Icon as={FiMapPin} color="teal.500" />
-                <Text><strong>Address:</strong> {company.companyAddress ? `${company.companyAddress}, ${company.postalCity}, ${company.country}` : 'N/A'}</Text>
+                <Text><strong>Address:</strong> {company?.companyAddress ? 
+                  `${company.companyAddress}, ${company.postalCity || ''}, ${company.country || ''}` : 
+                  'N/A'}
+                </Text>
               </HStack>
               
               <HStack>
                 <Icon as={FiBriefcase} color="teal.500" />
-                <Text><strong>Sector:</strong> {company.sector || 'N/A'}</Text>
+                <Text><strong>Sector:</strong> {company?.sector || 'N/A'}</Text>
               </HStack>
+              
+              {company?.subsector && (
+                <HStack>
+                  <Icon as={FiBriefcase} color="teal.500" />
+                  <Text><strong>Subsector:</strong> {company.subsector}</Text>
+                </HStack>
+              )}
               
               <HStack>
                 <Icon as={FiFileText} color="teal.500" />
-                <Text><strong>Registration Number:</strong> {company.registrationNumber || 'N/A'}</Text>
+                <Text><strong>Registration Number:</strong> {company?.registrationNumber || 'N/A'}</Text>
               </HStack>
               
               <HStack>
                 <Icon as={FiPhone} color="teal.500" />
-                <Text><strong>Company Phone:</strong> {formatPhone(company.contactPhoneCode, company.contactPhone)}</Text>
+                <Text><strong>Company Phone:</strong> {formatPhone(company?.contactPhoneCode, company?.contactPhone)}</Text>
               </HStack>
             </VStack>
           </Box>
