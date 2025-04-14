@@ -1,4 +1,4 @@
-// src/pages/exhibitor/EventDetail.jsx
+// src/pages/Exhibitor/EventDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -37,10 +37,12 @@ import {
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import { getEventImageUrl } from '../../utils/fileUtils';
+import { getEventImageUrl, getFileUrl } from '../../utils/fileUtils';
+import apiConfig from '../../config/api.config';
 import eventService from '../../services/event.service';
 import registrationService from '../../services/registration.service';
 import exhibitorService from '../../services/exhibitor.service';
+import organizerService from '../../services/organizer.service';
 import { useAuth } from '../../context/AuthContext';
 import RegistrationModal from '../../components/exhibitor/events/RegistrationModal';
 
@@ -57,10 +59,11 @@ const EventDetail = () => {
   // States
   const [event, setEvent] = useState(null);
   const [exhibitors, setExhibitors] = useState([]);
-  const [exhibitor, setExhibitor] = useState(null);  // Current user's exhibitor data
+  const [exhibitor, setExhibitor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [registrationLoading, setRegistrationLoading] = useState(false);
   const [userRegistration, setUserRegistration] = useState(null);
+  const [organizerData, setOrganizerData] = useState(null);
   
   // Dialog state
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -84,6 +87,29 @@ const EventDetail = () => {
         // Fetch official exhibitors
         const registrations = await registrationService.getEventExhibitors(eventId);
         setExhibitors(registrations);
+        
+        // Fetch organizer details if we have an organizer
+        if (eventData.organizer) {
+          try {
+            // Get the organizer's user ID
+            let organizerId;
+            if (typeof eventData.organizer === 'object') {
+              organizerId = eventData.organizer._id || eventData.organizer.id;
+            } else {
+              organizerId = eventData.organizer;
+            }
+            
+            if (organizerId) {
+              // Fetch organizer details by user ID
+              const organizerDetails = await organizerService.getByUserId(organizerId);
+              if (organizerDetails) {
+                setOrganizerData(organizerDetails);
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching organizer details:', error);
+          }
+        }
         
         // Check if current user has already registered
         if (isAuthenticated && user) {
@@ -588,7 +614,10 @@ const EventDetail = () => {
                               <Avatar 
                                 size="md" 
                                 name={company.companyName}
-                                src={company.companyLogoPath ? `/files/uploads/organization-logos/${company.companyLogoPath}` : undefined}
+                                src={company.companyLogoPath ? 
+                                  getFileUrl(`${apiConfig.UPLOADS.LOGOS}/${company.companyLogoPath}`) : 
+                                  undefined
+                                }
                                 mr={4}
                               />
                               <Box>
@@ -633,7 +662,7 @@ const EventDetail = () => {
                 </Box>
               </MotionBox>
               
-              {/* Organizer Info */}
+              {/* Organizer Info - Updated with organizerData */}
               {event.organizer && (
                 <MotionBox
                   mt={6}
@@ -651,12 +680,16 @@ const EventDetail = () => {
                   <Flex align="center">
                     <Avatar 
                       size="lg" 
-                      name={event.organizer.username || event.organizer.email}
+                      name={organizerData?.organizationName || 'Event Organizer'}
+                      src={organizerData?.organizationLogoPath ? 
+                        getFileUrl(`${apiConfig.UPLOADS.LOGOS}/${organizerData.organizationLogoPath}`) : 
+                        undefined
+                      }
                       mr={4}
                     />
                     <Box>
                       <Text fontWeight="bold">
-                        {event.organizer.username || event.organizer.email}
+                        {organizerData?.organizationName || 'Event Organizer'}
                       </Text>
                       <Text fontSize="sm" color={mutedColor}>
                         Event Organizer
