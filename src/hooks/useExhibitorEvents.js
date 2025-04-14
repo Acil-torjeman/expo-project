@@ -17,7 +17,7 @@ const useExhibitorEvents = (initialFilters = {}) => {
   
   const toast = useToast();
   
-  // Fetch all public events
+  // Fetch all public events from all organizers
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     setError(null);

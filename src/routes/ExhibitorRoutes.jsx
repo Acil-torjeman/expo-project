@@ -1,3 +1,4 @@
+// src/routes/ExhibitorRoutes.jsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
@@ -7,7 +8,8 @@ import NotFound from '../pages/NotFound';
 // Exhibitor pages
 import ExhibitorDashboard from '../pages/exhibitor/Dashboard';
 import ExhibitorEvents from '../pages/Exhibitor/Events';
-import ExhibitorMessages from '../pages/Exhibitor/Messages';
+import ExhibitorEventDetail from '../pages/Exhibitor/EventDetail';
+import ExhibitorMessages from '../pages/exhibitor/Messages';
 import ExhibitorRegistrations from '../pages/exhibitor/Registrations';
 import ExhibitorStands from '../pages/exhibitor/Stands';
 import ExhibitorEquipment from '../pages/exhibitor/Equipment';
@@ -39,6 +41,16 @@ const ExhibitorRoutes = () => {
         element={
           <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
             <ExhibitorEvents />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Event Detail */}
+      <Route 
+        path="events/:eventId" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <ExhibitorEventDetail />
           </ProtectedRoute>
         } 
       />
@@ -102,7 +114,8 @@ const ExhibitorRoutes = () => {
           </ProtectedRoute>
         } 
       />
-      {/* events */}
+      
+      {/* Notifications */}
       <Route 
         path="notifications" 
         element={
