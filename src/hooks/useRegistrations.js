@@ -35,7 +35,8 @@ const useRegistrations = (initialFilters = {}) => {
     if (!user || !user.id) return [];
     
     try {
-      const data = await eventService.getEventsByOrganizer(user.id);
+      // Changed from getEventsByOrganizer to getOrganizerEvents
+      const data = await eventService.getOrganizerEvents(user.id);
       setEvents(data);
       return data;
     } catch (err) {

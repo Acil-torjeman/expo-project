@@ -50,18 +50,82 @@ class RegistrationService {
   }
 
   /**
-   * Find registrations by event ID
+   * Find registrations by event ID with full exhibitor details
    * @param {string} eventId - Event ID
    * @returns {Promise<Array>} List of registrations for the event
    */
   async findByEvent(eventId) {
     try {
       const response = await api.get(`/registrations/event/${eventId}`);
-      return response.data;
+      // Process registrations to ensure exhibitor data is complete
+      const processed = await this.processRegistrations(response.data);
+      return processed;
     } catch (error) {
       this._handleError(error, `Failed to fetch registrations for event ${eventId}`);
       return [];
     }
+  }
+  
+   /**
+   * Process registrations to ensure complete exhibitor and company data
+   * This will fetch any missing exhibitor/company details
+   */
+   async processRegistrations(registrations) {
+    if (!registrations || !registrations.length) return [];
+    
+    // Create a map to track which exhibitors we need to fetch
+    const exhibitorsToFetch = new Map();
+    
+    // Mark registrations that need exhibitor details fetched
+    registrations.forEach(reg => {
+      // Check if exhibitor is just an ID or doesn't have company details
+      if (reg.exhibitor) {
+        if (typeof reg.exhibitor === 'string' || 
+            !reg.exhibitor.company || 
+            typeof reg.exhibitor.company === 'string') {
+          
+          // Store the exhibitor ID and the registration index
+          const exhibitorId = typeof reg.exhibitor === 'string' ? 
+            reg.exhibitor : reg.exhibitor._id;
+            
+          if (exhibitorId) {
+            exhibitorsToFetch.set(exhibitorId, true);
+          }
+        }
+      }
+    });
+    
+    // If we have exhibitors to fetch, get their details
+    if (exhibitorsToFetch.size > 0) {
+      const exhibitorPromises = Array.from(exhibitorsToFetch.keys()).map(id => 
+        exhibitorService.getById(id).catch(() => null)
+      );
+      
+      const exhibitors = await Promise.all(exhibitorPromises);
+      
+      // Create a map of exhibitor IDs to their full details
+      const exhibitorMap = new Map();
+      exhibitors.forEach(exhibitor => {
+        if (exhibitor && exhibitor._id) {
+          exhibitorMap.set(exhibitor._id.toString(), exhibitor);
+        }
+      });
+      
+      // Update registrations with full exhibitor details
+      registrations = registrations.map(reg => {
+        if (reg.exhibitor) {
+          const exhibitorId = typeof reg.exhibitor === 'string' ? 
+            reg.exhibitor : reg.exhibitor._id;
+            
+          if (exhibitorId && exhibitorMap.has(exhibitorId.toString())) {
+            reg.exhibitor = exhibitorMap.get(exhibitorId.toString());
+          }
+        }
+        return reg;
+      });
+    }
+    
+    return registrations;
   }
 
   /**

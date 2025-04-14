@@ -38,13 +38,13 @@ const useEvents = (initialFilters = {}) => {
     setError(null);
     
     try {
-      // Try direct API call with axios instead
-      const response = await api.get('/events/organizer/' + user.id);
-      const data = response.data || [];
+      // Use the eventService instead of direct API call
+      const data = await eventService.getOrganizerEvents(user.id);
       
-      // Log what we received
-      console.log('Events received:', data);
+      // Process the received data
+      let filteredData = [...data];
       
+      // Apply filters
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         filteredData = filteredData.filter(item => 

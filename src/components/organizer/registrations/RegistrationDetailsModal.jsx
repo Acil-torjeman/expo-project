@@ -1,5 +1,5 @@
 // src/components/organizer/registrations/RegistrationDetailsModal.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -35,11 +35,63 @@ const RegistrationDetailsModal = ({
 }) => {
   if (!registration) return null;
   
-  // Extract exhibitor and company info safely with fallbacks
-  const exhibitor = registration.exhibitor || {};
-  const company = exhibitor.company || {};
-  const user = exhibitor.user || {};
-  const event = registration.event || {};
+  // Debug the structure of the registration data
+  useEffect(() => {
+    if (registration) {
+      console.log('Registration data:', registration);
+    }
+  }, [registration]);
+  
+  // Extract data correctly based on the actual structure
+  // The structure might be different because of MongoDB population
+  let exhibitor, company, user, event;
+  
+  // Check for populated vs. non-populated structures
+  if (registration.exhibitor) {
+    if (typeof registration.exhibitor === 'object') {
+      exhibitor = registration.exhibitor;
+      // Check if exhibitor.company is a string ID or populated object
+      if (exhibitor.company) {
+        if (typeof exhibitor.company === 'object') {
+          company = exhibitor.company;
+        } else {
+          company = {}; // Company is just an ID reference, not populated
+        }
+      } else {
+        company = {};
+      }
+      
+      // Check if user is populated
+      if (exhibitor.user) {
+        if (typeof exhibitor.user === 'object') {
+          user = exhibitor.user;
+        } else {
+          user = {}; // User is just an ID reference
+        }
+      } else {
+        user = {};
+      }
+    } else {
+      exhibitor = {};
+      company = {};
+      user = {};
+    }
+  } else {
+    exhibitor = {};
+    company = {};
+    user = {};
+  }
+  
+  // Similarly for event
+  if (registration.event) {
+    if (typeof registration.event === 'object') {
+      event = registration.event;
+    } else {
+      event = {}; // Event is just an ID reference
+    }
+  } else {
+    event = {};
+  }
   
   // Format date
   const formatDate = (dateString) => {
@@ -129,7 +181,7 @@ const RegistrationDetailsModal = ({
                 size="md"
               />
               <VStack align="start" spacing={0}>
-                <Text fontWeight="bold">{company?.companyName || 'N/A'}</Text>
+                <Text fontWeight="bold">{company?.companyName || 'Unknown Company'}</Text>
                 <Text fontSize="sm" color="gray.500">{company?.country || 'N/A'}</Text>
               </VStack>
             </HStack>
@@ -137,10 +189,11 @@ const RegistrationDetailsModal = ({
             <VStack align="start" spacing={2} mt={2}>
               <HStack>
                 <Icon as={FiMapPin} color="teal.500" />
-                <Text><strong>Address:</strong> {company?.companyAddress ? 
+                <Text><strong>Address:</strong> {
+                  company?.companyAddress ? 
                   `${company.companyAddress}, ${company.postalCity || ''}, ${company.country || ''}` : 
-                  'N/A'}
-                </Text>
+                  'N/A'
+                }</Text>
               </HStack>
               
               <HStack>

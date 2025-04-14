@@ -95,12 +95,25 @@ const Registrations = () => {
       header: 'Company',
       accessor: 'exhibitor',
       render: (item) => {
-        const company = item.exhibitor?.company;
+        let companyName = 'Unknown';
+        let sector = 'No sector';
+        
+        // Check all possible data structures
+        if (item.exhibitor) {
+          // If exhibitor has populated company
+          if (typeof item.exhibitor === 'object' && item.exhibitor.company) {
+            if (typeof item.exhibitor.company === 'object') {
+              companyName = item.exhibitor.company.companyName || 'Unknown';
+              sector = item.exhibitor.company.sector || 'No sector';
+            }
+          }
+        }
+        
         return (
           <HStack>
-            <Text fontWeight="medium">{company?.companyName || 'Unknown'}</Text>
+            <Text fontWeight="medium">{companyName}</Text>
             <Badge size="sm" colorScheme="blue">
-              {company?.sector || 'No sector'}
+              {sector}
             </Badge>
           </HStack>
         );
@@ -117,10 +130,17 @@ const Registrations = () => {
       header: 'Contact',
       accessor: 'contact',
       render: (item) => {
-        const user = item.exhibitor?.user;
-        return (
-          <Text>{user?.email || 'No email'}</Text>
-        );
+        let email = 'No email';
+        
+        if (item.exhibitor) {
+          if (typeof item.exhibitor === 'object' && item.exhibitor.user) {
+            if (typeof item.exhibitor.user === 'object') {
+              email = item.exhibitor.user.email || 'No email';
+            }
+          }
+        }
+        
+        return <Text>{email}</Text>;
       }
     },
     {
