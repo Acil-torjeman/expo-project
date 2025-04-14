@@ -38,12 +38,12 @@ class EventService {
    * @param {string} organizerId - Organizer ID
    * @returns {Promise<Array>} Events array
    */
-  async getOrganizerEvents(organizerId) {
+  async getEventsByOrganizer(organizerId) {
     try {
       const response = await api.get(`/events/organizer/${organizerId}`);
       return response.data;
     } catch (error) {
-      this._handleError(error, 'Error fetching organizer events');
+      console.error('Error fetching organizer events:', error);
       return [];
     }
   }

@@ -135,7 +135,24 @@ class RegistrationService {
       }
     }
   }
-
+  /**
+ * Review a registration (approve or reject)
+ * @param {string} id - Registration ID
+ * @param {Object} reviewData - Review data object
+ * @returns {Promise<Object>} Updated registration
+ */
+async reviewRegistration(id, reviewData) {
+    try {
+      const response = await api.post(`/registrations/${id}/review`, {
+        status: reviewData.status,
+        reason: reviewData.reason
+      });
+      return response.data;
+    } catch (error) {
+      this._handleError(error, `Failed to ${reviewData.status} registration`);
+      throw error;
+    }
+  }
   /**
    * Handle errors consistently
    * @private
