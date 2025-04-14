@@ -35,9 +35,6 @@ const useRegistrations = (initialFilters = {}) => {
     if (!user || !user.id) return [];
     
     try {
-      // Use the correct method name from your eventService
-      // This could be getOrganizerEvents, getEventsByOrganizer, etc.
-      // Change this line to match your actual service method name
       const data = await eventService.getEventsByOrganizer(user.id);
       setEvents(data);
       return data;
@@ -81,6 +78,7 @@ const useRegistrations = (initialFilters = {}) => {
         // Fetch for all events
         for (const event of userEvents) {
           try {
+            // Use findByEvent method that we added to the service
             const eventRegs = await registrationService.findByEvent(event._id);
             // Add event data to each registration for easier filtering
             const registrationsWithEvent = eventRegs.map(reg => ({

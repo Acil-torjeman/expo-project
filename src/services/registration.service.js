@@ -50,6 +50,21 @@ class RegistrationService {
   }
 
   /**
+   * Find registrations by event ID
+   * @param {string} eventId - Event ID
+   * @returns {Promise<Array>} List of registrations for the event
+   */
+  async findByEvent(eventId) {
+    try {
+      const response = await api.get(`/registrations/event/${eventId}`);
+      return response.data;
+    } catch (error) {
+      this._handleError(error, `Failed to fetch registrations for event ${eventId}`);
+      return [];
+    }
+  }
+
+  /**
    * Update registration's participation note
    * @param {string} id - Registration ID
    * @param {string} participationNote - Updated note
@@ -121,7 +136,6 @@ class RegistrationService {
    */
   async getEventExhibitors(eventId) {
     try {
-      // Use the new simpler endpoint
       const response = await api.get(`/registrations/event/${eventId}/exhibitors`);
       return response.data;
     } catch (error) {
@@ -135,13 +149,14 @@ class RegistrationService {
       }
     }
   }
+  
   /**
- * Review a registration (approve or reject)
- * @param {string} id - Registration ID
- * @param {Object} reviewData - Review data object
- * @returns {Promise<Object>} Updated registration
- */
-async reviewRegistration(id, reviewData) {
+   * Review a registration (approve or reject)
+   * @param {string} id - Registration ID
+   * @param {Object} reviewData - Review data object
+   * @returns {Promise<Object>} Updated registration
+   */
+  async reviewRegistration(id, reviewData) {
     try {
       const response = await api.post(`/registrations/${id}/review`, {
         status: reviewData.status,
@@ -153,6 +168,7 @@ async reviewRegistration(id, reviewData) {
       throw error;
     }
   }
+  
   /**
    * Handle errors consistently
    * @private
