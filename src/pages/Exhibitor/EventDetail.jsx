@@ -503,24 +503,44 @@ const EventDetail = () => {
                 </Text>
                 
                 {/* Industry Sectors */}
-                {event.allowedSectors && event.allowedSectors.length > 0 && (
-                  <Box mt={6}>
-                    <Text fontWeight="medium" mb={2}>Industry Sectors:</Text>
-                    <HStack spacing={2} flexWrap="wrap">
-                      {event.allowedSectors.map(sector => (
-                        <Tag 
-                          key={sector} 
-                          colorScheme="teal" 
-                          variant="subtle" 
-                          mb={2}
-                        >
-                          <Icon as={FiTag} mr={1} />
-                          {sector}
-                        </Tag>
-                      ))}
-                    </HStack>
-                  </Box>
-                )}
+                    {event.allowedSectors && event.allowedSectors.length > 0 && (
+                    <Box mt={6}>
+                        <Text fontWeight="medium" mb={2}>Industry Sectors:</Text>
+                        <HStack spacing={2} flexWrap="wrap">
+                        {event.allowedSectors.map(sector => (
+                            <Tag 
+                            key={sector} 
+                            colorScheme="teal" 
+                            variant="subtle" 
+                            mb={2}
+                            >
+                            <Icon as={FiTag} mr={1} />
+                            {sector}
+                            </Tag>
+                        ))}
+                        </HStack>
+                    </Box>
+                    )}
+
+                    {/* Subsectors */}
+                    {event.allowedSubsectors && event.allowedSubsectors.length > 0 && (
+                    <Box mt={4}>
+                        <Text fontWeight="medium" mb={2}>Subsectors:</Text>
+                        <HStack spacing={2} flexWrap="wrap">
+                        {event.allowedSubsectors.map(subsector => (
+                            <Tag 
+                            key={subsector} 
+                            colorScheme="blue" 
+                            variant="subtle" 
+                            mb={2}
+                            >
+                            <Icon as={FiTag} mr={1} />
+                            {subsector}
+                            </Tag>
+                        ))}
+                        </HStack>
+                    </Box>
+                    )}
                 
                 {/* Special Conditions if available */}
                 {event.specialConditions && (
