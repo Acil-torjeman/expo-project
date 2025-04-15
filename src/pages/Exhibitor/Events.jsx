@@ -1,4 +1,4 @@
-// src/pages/exhibitor/Events.jsx
+// src/pages/Exhibitor/Events.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -39,10 +39,13 @@ import {
 import { motion } from 'framer-motion';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import FilterModal from '../../components/common/ui/FilterModal';
-import { getStatusColorScheme } from '../../constants/eventConstants';
 import { getEventImageUrl } from '../../utils/fileUtils';
 import { getAllSectors } from '../../constants/industrySectors';
 import eventService from '../../services/event.service';
+import registrationService from '../../services/registration.service';
+import organizerService from '../../services/organizer.service';
+import { useAuth } from '../../context/AuthContext';
+import { getStatusColorScheme, getStatusDisplayText } from '../../constants/registrationConstants';
 
 // Motion components
 const MotionBox = motion(Box);
@@ -51,9 +54,12 @@ const MotionFlex = motion(Flex);
 const ExhibitorEvents = () => {
   const navigate = useNavigate();
   const toast = useToast();
+  const { isAuthenticated } = useAuth();
   
   // States
   const [events, setEvents] = useState([]);
+  const [registrationStatus, setRegistrationStatus] = useState({});
+  const [organizerDetails, setOrganizerDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     search: '',
@@ -79,6 +85,14 @@ const ExhibitorEvents = () => {
     fetchEvents();
   }, [filters]);
   
+  // After fetching events, check registration status for each
+  useEffect(() => {
+    if (isAuthenticated && events.length > 0) {
+      checkRegistrationStatuses();
+      fetchOrganizerDetails();
+    }
+  }, [events, isAuthenticated]);
+  
   // Fetch events from API
   const fetchEvents = async () => {
     setLoading(true);
@@ -101,6 +115,73 @@ const ExhibitorEvents = () => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Check registration status for all events
+  const checkRegistrationStatuses = async () => {
+    if (!isAuthenticated) return;
+    
+    const statuses = {};
+    
+    for (const event of events) {
+      try {
+        const result = await registrationService.checkEventRegistration(event._id);
+        if (result && result.registered && result.registration) {
+          statuses[event._id] = result.registration.status;
+        }
+      } catch (error) {
+        console.error(`Error checking registration for event ${event._id}:`, error);
+      }
+    }
+    
+    setRegistrationStatus(statuses);
+  };
+  
+  // Fetch organizer details for each unique organizer
+  const fetchOrganizerDetails = async () => {
+    const organizers = {};
+    
+    // Create a set of unique organizer IDs
+    const organizerIds = new Set();
+    events.forEach(event => {
+      if (event.organizer) {
+        const organizerId = typeof event.organizer === 'object' 
+          ? event.organizer._id || event.organizer.id 
+          : event.organizer;
+        
+        if (organizerId) {
+          organizerIds.add(organizerId);
+        }
+      }
+    });
+    
+    // Fetch details for each organizer
+    for (const organizerId of organizerIds) {
+      try {
+        const details = await organizerService.getByUserId(organizerId);
+        if (details) {
+          organizers[organizerId] = details;
+        }
+      } catch (error) {
+        console.error(`Error fetching organizer details for ID ${organizerId}:`, error);
+      }
+    }
+    
+    setOrganizerDetails(organizers);
+  };
+  
+  // Helper to get organizer name
+  const getOrganizerName = (event) => {
+    if (!event.organizer) return 'Unknown organizer';
+    
+    const organizerId = typeof event.organizer === 'object' 
+      ? event.organizer._id || event.organizer.id 
+      : event.organizer;
+    
+    if (!organizerId) return 'Unknown organizer';
+    
+    const organizer = organizerDetails[organizerId];
+    return organizer?.organizationName || 'Unknown organizer';
   };
   
   // Handle search
@@ -427,21 +508,23 @@ const ExhibitorEvents = () => {
                       </Text>
                     </HStack>
                     
-                    {/* Status badge */}
-                    <Badge
-                      colorScheme={getStatusColorScheme(event.status)}
-                      position="absolute"
-                      top={3}
-                      right={3}
-                      px={2}
-                      py={1}
-                      borderRadius="full"
-                      textTransform="uppercase"
-                      fontSize="xs"
-                      fontWeight="bold"
-                    >
-                      {event.status}
-                    </Badge>
+                    {/* Registration status badge - only shown if registered */}
+                    {registrationStatus[event._id] && (
+                      <Badge
+                        colorScheme={getStatusColorScheme(registrationStatus[event._id])}
+                        position="absolute"
+                        top={3}
+                        right={3}
+                        px={2}
+                        py={1}
+                        borderRadius="full"
+                        textTransform="uppercase"
+                        fontSize="xs"
+                        fontWeight="bold"
+                      >
+                        {getStatusDisplayText(registrationStatus[event._id])}
+                      </Badge>
+                    )}
                   </Box>
                   
                   <Flex 
@@ -475,10 +558,10 @@ const ExhibitorEvents = () => {
                       </HStack>
                     </Box>
                     
-                    {/* Event organizer tag */}
+                    {/* Event organizer tag - Now with proper organization name */}
                     <Flex mt={4} justifyContent="flex-end">
                       <Tag size="sm" colorScheme="gray" borderRadius="full">
-                        {event.organizer?.username || 'Unknown organizer'}
+                        {getOrganizerName(event)}
                       </Tag>
                     </Flex>
                   </Flex>
