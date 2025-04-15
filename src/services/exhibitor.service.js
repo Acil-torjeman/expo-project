@@ -12,7 +12,7 @@ class ExhibitorService {
       const response = await api.get(`/exhibitor/user/${userId}`);
       return response.data;
     } catch (error) {
-      this._handleError(error, 'Failed to fetch exhibitor profile');
+      console.error(`Failed to fetch exhibitor profile for user ${userId}:`, error.message);
       return null;
     }
   }
@@ -27,7 +27,7 @@ class ExhibitorService {
       const response = await api.get(`/exhibitor/${id}`);
       return response.data;
     } catch (error) {
-      this._handleError(error, `Failed to fetch exhibitor ${id}`);
+      console.error(`Failed to fetch exhibitor ${id}:`, error.message);
       return null;
     }
   }

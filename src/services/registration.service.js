@@ -1,5 +1,6 @@
 // src/services/registration.service.js
 import api from '../utils/api';
+import exhibitorService from './exhibitor.service';
 
 class RegistrationService {
   /**
@@ -42,7 +43,9 @@ class RegistrationService {
   async getRegistrationById(id) {
     try {
       const response = await api.get(`/registrations/${id}`);
-      return response.data;
+      // Enrich with exhibitor data
+      const enriched = await this.enrichRegistrationsWithExhibitorData([response.data]);
+      return enriched[0];
     } catch (error) {
       this._handleError(error, `Failed to fetch registration ${id}`);
       throw error;
@@ -50,82 +53,95 @@ class RegistrationService {
   }
 
   /**
-   * Find registrations by event ID with full exhibitor details
+   * Find registrations by event ID with exhibitor details
    * @param {string} eventId - Event ID
-   * @returns {Promise<Array>} List of registrations for the event
+   * @returns {Promise<Array>} List of registrations with exhibitor details
    */
   async findByEvent(eventId) {
     try {
       const response = await api.get(`/registrations/event/${eventId}`);
-      // Process registrations to ensure exhibitor data is complete
-      const processed = await this.processRegistrations(response.data);
-      return processed;
+      
+      // Enhance the registrations with exhibitor data
+      const enhancedRegistrations = await Promise.all(response.data.map(async (registration) => {
+        // If exhibitor field contains a User ID instead of Exhibitor ID
+        if (registration.exhibitor) {
+          // Treat exhibitor as a User ID and fetch exhibitor data
+          const userId = typeof registration.exhibitor === 'object' 
+            ? registration.exhibitor._id 
+            : registration.exhibitor;
+          
+          try {
+            // Get exhibitor by user ID
+            const exhibitorData = await exhibitorService.getByUserId(userId);
+            if (exhibitorData) {
+              registration.exhibitor = exhibitorData;
+            }
+          } catch (error) {
+            console.error(`Failed to get exhibitor data for user ID ${userId}`, error);
+          }
+        }
+        
+        return registration;
+      }));
+      
+      return enhancedRegistrations;
     } catch (error) {
       this._handleError(error, `Failed to fetch registrations for event ${eventId}`);
       return [];
     }
   }
-  
-   /**
-   * Process registrations to ensure complete exhibitor and company data
-   * This will fetch any missing exhibitor/company details
+
+  /**
+   * Enrich registration data with exhibitor and company information
+   * @param {Array} registrations - Raw registration data
+   * @returns {Promise<Array>} Enhanced registrations with full exhibitor data
    */
-   async processRegistrations(registrations) {
+  async enrichRegistrationsWithExhibitorData(registrations) {
     if (!registrations || !registrations.length) return [];
     
-    // Create a map to track which exhibitors we need to fetch
-    const exhibitorsToFetch = new Map();
-    
-    // Mark registrations that need exhibitor details fetched
-    registrations.forEach(reg => {
-      // Check if exhibitor is just an ID or doesn't have company details
-      if (reg.exhibitor) {
-        if (typeof reg.exhibitor === 'string' || 
-            !reg.exhibitor.company || 
-            typeof reg.exhibitor.company === 'string') {
-          
-          // Store the exhibitor ID and the registration index
-          const exhibitorId = typeof reg.exhibitor === 'string' ? 
-            reg.exhibitor : reg.exhibitor._id;
-            
-          if (exhibitorId) {
-            exhibitorsToFetch.set(exhibitorId, true);
-          }
+    // Process each registration to get exhibitor details
+    const enrichedRegistrations = await Promise.all(registrations.map(async (registration) => {
+      // Skip if no user ID is available
+      if (!registration.exhibitor) return registration;
+      
+      // Get the user ID from registration
+      const userId = typeof registration.exhibitor === 'object' 
+        ? registration.exhibitor._id 
+        : registration.exhibitor;
+      
+      if (!userId) return registration;
+      
+      try {
+        // Get exhibitor data by user ID
+        const exhibitorData = await exhibitorService.getByUserId(userId);
+        
+        if (exhibitorData) {
+          // Replace the user reference with full exhibitor data
+          registration.exhibitor = exhibitorData;
         }
+      } catch (error) {
+        console.error(`Failed to fetch exhibitor data for user ${userId}:`, error.message);
       }
-    });
+      
+      return registration;
+    }));
     
-    // If we have exhibitors to fetch, get their details
-    if (exhibitorsToFetch.size > 0) {
-      const exhibitorPromises = Array.from(exhibitorsToFetch.keys()).map(id => 
-        exhibitorService.getById(id).catch(() => null)
-      );
-      
-      const exhibitors = await Promise.all(exhibitorPromises);
-      
-      // Create a map of exhibitor IDs to their full details
-      const exhibitorMap = new Map();
-      exhibitors.forEach(exhibitor => {
-        if (exhibitor && exhibitor._id) {
-          exhibitorMap.set(exhibitor._id.toString(), exhibitor);
-        }
-      });
-      
-      // Update registrations with full exhibitor details
-      registrations = registrations.map(reg => {
-        if (reg.exhibitor) {
-          const exhibitorId = typeof reg.exhibitor === 'string' ? 
-            reg.exhibitor : reg.exhibitor._id;
-            
-          if (exhibitorId && exhibitorMap.has(exhibitorId.toString())) {
-            reg.exhibitor = exhibitorMap.get(exhibitorId.toString());
-          }
-        }
-        return reg;
-      });
+    return enrichedRegistrations;
+  }
+
+  /**
+   * Get official exhibitors for an event
+   * @param {string} eventId - Event ID
+   * @returns {Promise<Array>} List of official exhibitors
+   */
+  async getEventExhibitors(eventId) {
+    try {
+      const response = await api.get(`/registrations/event/${eventId}/exhibitors`);
+      return response.data;
+    } catch (error) {
+      this._handleError(error, `Failed to fetch exhibitors for event ${eventId}`);
+      return [];
     }
-    
-    return registrations;
   }
 
   /**
@@ -193,27 +209,6 @@ class RegistrationService {
     }
   }
 
-  /**
-   * Get official exhibitors for an event (completed registrations)
-   * @param {string} eventId - Event ID
-   * @returns {Promise<Array>} List of official exhibitors
-   */
-  async getEventExhibitors(eventId) {
-    try {
-      const response = await api.get(`/registrations/event/${eventId}/exhibitors`);
-      return response.data;
-    } catch (error) {
-      // Try the old endpoint as fallback
-      try {
-        const fallbackResponse = await api.get(`/registrations/event/${eventId}/official`);
-        return fallbackResponse.data;
-      } catch (fallbackError) {
-        console.error(`Failed to fetch exhibitors for event ${eventId}:`, error);
-        return [];
-      }
-    }
-  }
-  
   /**
    * Review a registration (approve or reject)
    * @param {string} id - Registration ID

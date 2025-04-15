@@ -1,5 +1,5 @@
 // src/components/organizer/registrations/RegistrationDetailsModal.jsx
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -35,63 +35,11 @@ const RegistrationDetailsModal = ({
 }) => {
   if (!registration) return null;
   
-  // Debug the structure of the registration data
-  useEffect(() => {
-    if (registration) {
-      console.log('Registration data:', registration);
-    }
-  }, [registration]);
-  
-  // Extract data correctly based on the actual structure
-  // The structure might be different because of MongoDB population
-  let exhibitor, company, user, event;
-  
-  // Check for populated vs. non-populated structures
-  if (registration.exhibitor) {
-    if (typeof registration.exhibitor === 'object') {
-      exhibitor = registration.exhibitor;
-      // Check if exhibitor.company is a string ID or populated object
-      if (exhibitor.company) {
-        if (typeof exhibitor.company === 'object') {
-          company = exhibitor.company;
-        } else {
-          company = {}; // Company is just an ID reference, not populated
-        }
-      } else {
-        company = {};
-      }
-      
-      // Check if user is populated
-      if (exhibitor.user) {
-        if (typeof exhibitor.user === 'object') {
-          user = exhibitor.user;
-        } else {
-          user = {}; // User is just an ID reference
-        }
-      } else {
-        user = {};
-      }
-    } else {
-      exhibitor = {};
-      company = {};
-      user = {};
-    }
-  } else {
-    exhibitor = {};
-    company = {};
-    user = {};
-  }
-  
-  // Similarly for event
-  if (registration.event) {
-    if (typeof registration.event === 'object') {
-      event = registration.event;
-    } else {
-      event = {}; // Event is just an ID reference
-    }
-  } else {
-    event = {};
-  }
+  // Extract data safely with proper cascading fallbacks
+  const exhibitor = registration.exhibitor || {};
+  const company = exhibitor.company || {};
+  const user = exhibitor.user || {};
+  const event = registration.event || {};
   
   // Format date
   const formatDate = (dateString) => {
@@ -107,6 +55,9 @@ const RegistrationDetailsModal = ({
     if (!phone) return 'N/A';
     return `${phoneCode || ''} ${phone}`;
   };
+  
+  // Check if exhibitor data exists
+  const hasExhibitorData = Object.keys(exhibitor).length > 0;
   
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg" scrollBehavior="inside">
@@ -141,84 +92,102 @@ const RegistrationDetailsModal = ({
           </Box>
           
           {/* Exhibitor information */}
-          <Box mb={4}>
-            <Heading size="sm" mb={3}>Exhibitor Information</Heading>
-            <VStack align="start" spacing={2}>
-              <HStack>
-                <Icon as={FiUser} color="teal.500" />
-                <Text><strong>Representative:</strong> {user?.username || user?.email || 'N/A'}</Text>
+          {hasExhibitorData ? (
+            <Box mb={4}>
+              <Heading size="sm" mb={3}>Exhibitor Information</Heading>
+              <VStack align="start" spacing={2}>
+                <HStack>
+                  <Icon as={FiUser} color="teal.500" />
+                  <Text><strong>Representative:</strong> {user?.username || user?.email || 'N/A'}</Text>
+                </HStack>
+                
+                <HStack>
+                  <Icon as={FiMail} color="teal.500" />
+                  <Text><strong>Email:</strong> {user?.email || 'N/A'}</Text>
+                </HStack>
+                
+                <HStack>
+                  <Icon as={FiInfo} color="teal.500" />
+                  <Text><strong>Function:</strong> {exhibitor?.representativeFunction || 'N/A'}</Text>
+                </HStack>
+                
+                <HStack>
+                  <Icon as={FiPhone} color="teal.500" />
+                  <Text><strong>Contact:</strong> {formatPhone(exhibitor?.personalPhoneCode, exhibitor?.personalPhone)}</Text>
+                </HStack>
+              </VStack>
+            </Box>
+          ) : (
+            <Box mb={4} p={4} bg="yellow.50" borderRadius="md">
+              <HStack color="yellow.800">
+                <Icon as={FiInfo} />
+                <Text fontWeight="medium">Exhibitor information not available</Text>
               </HStack>
-              
-              <HStack>
-                <Icon as={FiMail} color="teal.500" />
-                <Text><strong>Email:</strong> {user?.email || 'N/A'}</Text>
-              </HStack>
-              
-              <HStack>
-                <Icon as={FiInfo} color="teal.500" />
-                <Text><strong>Function:</strong> {exhibitor?.representativeFunction || 'N/A'}</Text>
-              </HStack>
-              
-              <HStack>
-                <Icon as={FiPhone} color="teal.500" />
-                <Text><strong>Contact:</strong> {formatPhone(exhibitor?.personalPhoneCode, exhibitor?.personalPhone)}</Text>
-              </HStack>
-            </VStack>
-          </Box>
+            </Box>
+          )}
           
           <Divider my={4} />
           
           {/* Company information */}
-          <Box mb={4}>
-            <Heading size="sm" mb={3}>Company Information</Heading>
-            <HStack mb={3}>
-              <Avatar 
-                name={company?.companyName || 'Unknown Company'} 
-                src={company?.companyLogoPath ? 
-                  getFileUrl(`${apiConfig.UPLOADS.LOGOS}/${company.companyLogoPath}`) : 
-                  undefined
-                }
-                size="md"
-              />
-              <VStack align="start" spacing={0}>
-                <Text fontWeight="bold">{company?.companyName || 'Unknown Company'}</Text>
-                <Text fontSize="sm" color="gray.500">{company?.country || 'N/A'}</Text>
-              </VStack>
-            </HStack>
-            
-            <VStack align="start" spacing={2} mt={2}>
-              <HStack>
-                <Icon as={FiMapPin} color="teal.500" />
-                <Text><strong>Address:</strong> {
-                  company?.companyAddress ? 
-                  `${company.companyAddress}, ${company.postalCity || ''}, ${company.country || ''}` : 
-                  'N/A'
-                }</Text>
+          {hasExhibitorData && Object.keys(company).length > 0 ? (
+            <Box mb={4}>
+              <Heading size="sm" mb={3}>Company Information</Heading>
+              <HStack mb={3}>
+                <Avatar 
+                  name={company?.companyName || 'Unknown Company'} 
+                  src={company?.companyLogoPath ? 
+                    getFileUrl(`${apiConfig.UPLOADS.LOGOS}/${company.companyLogoPath}`) : 
+                    undefined
+                  }
+                  size="md"
+                />
+                <VStack align="start" spacing={0}>
+                  <Text fontWeight="bold">{company?.companyName || 'Unknown Company'}</Text>
+                  <Text fontSize="sm" color="gray.500">{company?.country || 'N/A'}</Text>
+                </VStack>
               </HStack>
               
-              <HStack>
-                <Icon as={FiBriefcase} color="teal.500" />
-                <Text><strong>Sector:</strong> {company?.sector || 'N/A'}</Text>
-              </HStack>
-              
-              {company?.subsector && (
+              <VStack align="start" spacing={2} mt={2}>
+                <HStack>
+                  <Icon as={FiMapPin} color="teal.500" />
+                  <Text><strong>Address:</strong> {
+                    company?.companyAddress ? 
+                    `${company.companyAddress}, ${company.postalCity || ''}, ${company.country || ''}` : 
+                    'N/A'
+                  }</Text>
+                </HStack>
+                
                 <HStack>
                   <Icon as={FiBriefcase} color="teal.500" />
-                  <Text><strong>Subsector:</strong> {company.subsector}</Text>
+                  <Text><strong>Sector:</strong> {company?.sector || 'N/A'}</Text>
                 </HStack>
-              )}
-              
-              <HStack>
-                <Icon as={FiFileText} color="teal.500" />
-                <Text><strong>Registration Number:</strong> {company?.registrationNumber || 'N/A'}</Text>
+                
+                {company?.subsector && (
+                  <HStack>
+                    <Icon as={FiBriefcase} color="teal.500" />
+                    <Text><strong>Subsector:</strong> {company.subsector}</Text>
+                  </HStack>
+                )}
+                
+                <HStack>
+                  <Icon as={FiFileText} color="teal.500" />
+                  <Text><strong>Registration Number:</strong> {company?.registrationNumber || 'N/A'}</Text>
+                </HStack>
+                
+                <HStack>
+                  <Icon as={FiPhone} color="teal.500" />
+                  <Text><strong>Company Phone:</strong> {formatPhone(company?.contactPhoneCode, company?.contactPhone)}</Text>
+                </HStack>
+              </VStack>
+            </Box>
+          ) : (
+            <Box mb={4} p={4} bg="yellow.50" borderRadius="md">
+              <HStack color="yellow.800">
+                <Icon as={FiInfo} />
+                <Text fontWeight="medium">Company information not available</Text>
               </HStack>
-              
-              <HStack>
-                <Icon as={FiPhone} color="teal.500" />
-                <Text><strong>Company Phone:</strong> {formatPhone(company?.contactPhoneCode, company?.contactPhone)}</Text>
-              </HStack>
-            </VStack>
-          </Box>
+            </Box>
+          )}
           
           {/* Participation note */}
           {registration.participationNote && (
