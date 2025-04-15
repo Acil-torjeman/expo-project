@@ -36,6 +36,24 @@ class RegistrationService {
   }
 
   /**
+   * Check registration status directly for a specific event
+   * This is a direct API call, more reliable than client-side filtering
+   * @param {string} eventId - Event ID to check registration for
+   * @returns {Promise<Object>} Registration status object with 'registered' flag
+   */
+  async checkEventRegistration(eventId) {
+    try {
+      console.log(`Checking registration status for event: ${eventId}`);
+      const response = await api.get(`/registrations/check/${eventId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error checking registration status: ${error}`);
+      // In case of error, assume not registered for safety
+      return { registered: false, registration: null };
+    }
+  }
+
+  /**
    * Get registration by ID
    * @param {string} id - Registration ID
    * @returns {Promise<Object>} Registration details
@@ -62,27 +80,7 @@ class RegistrationService {
       const response = await api.get(`/registrations/event/${eventId}`);
       
       // Enhance the registrations with exhibitor data
-      const enhancedRegistrations = await Promise.all(response.data.map(async (registration) => {
-        // If exhibitor field contains a User ID instead of Exhibitor ID
-        if (registration.exhibitor) {
-          // Treat exhibitor as a User ID and fetch exhibitor data
-          const userId = typeof registration.exhibitor === 'object' 
-            ? registration.exhibitor._id 
-            : registration.exhibitor;
-          
-          try {
-            // Get exhibitor by user ID
-            const exhibitorData = await exhibitorService.getByUserId(userId);
-            if (exhibitorData) {
-              registration.exhibitor = exhibitorData;
-            }
-          } catch (error) {
-            console.error(`Failed to get exhibitor data for user ID ${userId}`, error);
-          }
-        }
-        
-        return registration;
-      }));
+      const enhancedRegistrations = await this.enrichRegistrationsWithExhibitorData(response.data);
       
       return enhancedRegistrations;
     } catch (error) {
@@ -101,26 +99,26 @@ class RegistrationService {
     
     // Process each registration to get exhibitor details
     const enrichedRegistrations = await Promise.all(registrations.map(async (registration) => {
-      // Skip if no user ID is available
+      // Skip if no exhibitor ID is available
       if (!registration.exhibitor) return registration;
       
-      // Get the user ID from registration
-      const userId = typeof registration.exhibitor === 'object' 
+      // Get the exhibitor ID from registration
+      const exhibitorId = typeof registration.exhibitor === 'object' 
         ? registration.exhibitor._id 
         : registration.exhibitor;
       
-      if (!userId) return registration;
+      if (!exhibitorId) return registration;
       
       try {
-        // Get exhibitor data by user ID
-        const exhibitorData = await exhibitorService.getByUserId(userId);
+        // Get exhibitor data by ID
+        const exhibitorData = await exhibitorService.getById(exhibitorId);
         
         if (exhibitorData) {
-          // Replace the user reference with full exhibitor data
+          // Replace the exhibitor reference with full exhibitor data
           registration.exhibitor = exhibitorData;
         }
       } catch (error) {
-        console.error(`Failed to fetch exhibitor data for user ${userId}:`, error.message);
+        console.error(`Failed to fetch exhibitor data for ID ${exhibitorId}:`, error.message);
       }
       
       return registration;

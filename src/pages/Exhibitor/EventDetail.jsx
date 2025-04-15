@@ -1,5 +1,5 @@
 // src/pages/Exhibitor/EventDetail.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -13,7 +13,6 @@ import {
   HStack,
   Icon,
   Image,
-  SimpleGrid,
   Spinner,
   Tag,
   Text,
@@ -45,6 +44,7 @@ import exhibitorService from '../../services/exhibitor.service';
 import organizerService from '../../services/organizer.service';
 import { useAuth } from '../../context/AuthContext';
 import RegistrationModal from '../../components/exhibitor/events/RegistrationModal';
+import { RegistrationStatus, getStatusColorScheme, getStatusDisplayText } from '../../constants/registrationConstants';
 
 // Motion components
 const MotionBox = motion(Box);
@@ -64,8 +64,9 @@ const EventDetail = () => {
   const [registrationLoading, setRegistrationLoading] = useState(false);
   const [userRegistration, setUserRegistration] = useState(null);
   const [organizerData, setOrganizerData] = useState(null);
+  const [hasRegistered, setHasRegistered] = useState(false); // Track registration state separately
   
-  // Dialog state
+  // Registration modal
   const { isOpen, onOpen, onClose } = useDisclosure();
   
   // Theme colors
@@ -74,6 +75,24 @@ const EventDetail = () => {
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const textColor = useColorModeValue('gray.700', 'gray.200');
   const mutedColor = useColorModeValue('gray.600', 'gray.400');
+
+  // Check registration status specifically
+  const checkRegistrationStatus = useCallback(async () => {
+    if (!isAuthenticated || !exhibitor || !exhibitor._id) return null;
+    
+    try {
+      const registration = await registrationService.checkRegistrationStatus(eventId);
+      if (registration) {
+        setUserRegistration(registration);
+        setHasRegistered(true);
+        return registration;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error checking registration status:', error);
+      return null;
+    }
+  }, [eventId, isAuthenticated, exhibitor]);
   
   // Fetch event details
   useEffect(() => {
@@ -88,7 +107,7 @@ const EventDetail = () => {
         const registrations = await registrationService.getEventExhibitors(eventId);
         setExhibitors(registrations);
         
-        // Fetch organizer details if we have an organizer
+        // Fetch organizer details
         if (eventData.organizer) {
           try {
             // Get the organizer's user ID
@@ -100,7 +119,6 @@ const EventDetail = () => {
             }
             
             if (organizerId) {
-              // Fetch organizer details by user ID
               const organizerDetails = await organizerService.getByUserId(organizerId);
               if (organizerDetails) {
                 setOrganizerData(organizerDetails);
@@ -119,16 +137,6 @@ const EventDetail = () => {
             setExhibitor(exhibitorData);
           } catch (exhibitorError) {
             console.error('Error fetching exhibitor profile:', exhibitorError);
-          }
-          
-          // Get user registrations
-          const userRegs = await registrationService.getMyRegistrations();
-          const eventRegistration = userRegs.find(reg => 
-            reg.event && (reg.event._id === eventId || reg.event === eventId)
-          );
-          
-          if (eventRegistration) {
-            setUserRegistration(eventRegistration);
           }
         }
       } catch (error) {
@@ -149,6 +157,40 @@ const EventDetail = () => {
       fetchEventDetails();
     }
   }, [eventId, isAuthenticated, user, toast]);
+  
+  // Separate effect to check registration after exhibitor data is loaded
+  // Utilisation directe de l'API pour vérifier l'inscription
+useEffect(() => {
+  const checkRegistrationStatus = async () => {
+    if (!isAuthenticated || !eventId) return;
+    
+    try {
+      console.log("Vérification directe d'inscription pour l'événement:", eventId);
+      const result = await registrationService.checkEventRegistration(eventId);
+      
+      // Log de débogage
+      console.log("Statut d'inscription:", result);
+      
+      if (result.registered && result.registration) {
+        // L'utilisateur est inscrit, mettre à jour l'état
+        setUserRegistration(result.registration);
+        setHasRegistered(true);
+      } else {
+        // L'utilisateur n'est pas inscrit
+        setUserRegistration(null);
+        setHasRegistered(false);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la vérification de l'inscription:", error);
+      // Par sécurité, on n'affiche pas le bouton si on ne peut pas vérifier
+      setHasRegistered(false);
+    }
+  };
+  
+  if (isAuthenticated) {
+    checkRegistrationStatus();
+  }
+}, [isAuthenticated, eventId]);
   
   // Format date for display
   const formatDate = (dateString) => {
@@ -193,9 +235,45 @@ const EventDetail = () => {
       return;
     }
     
+    // Check if we have exhibitor data
+    if (!exhibitor || !exhibitor._id) {
+      toast({
+        title: 'Error',
+        description: 'Your exhibitor profile is incomplete. Please complete your profile before registering.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    
     setRegistrationLoading(true);
     try {
+      // Submit registration request
       await registrationService.registerForEvent(registrationData);
+      
+      // Set registration flags immediately to update UI
+      setHasRegistered(true);
+      
+      // Manually create a registration object for immediate UI update
+      const dummyRegistration = {
+        event: {
+          _id: event._id,
+          name: event.name
+        },
+        exhibitor: {
+          _id: exhibitor._id,
+          company: exhibitor.company,
+          user: {
+            _id: user.id,
+            email: user.email
+          }
+        },
+        status: RegistrationStatus.PENDING,
+        createdAt: new Date().toISOString()
+      };
+      
+      setUserRegistration(dummyRegistration);
       
       toast({
         title: 'Registration Submitted',
@@ -205,15 +283,10 @@ const EventDetail = () => {
         isClosable: true,
       });
       
-      // Refresh user registration status
-      const userRegs = await registrationService.getMyRegistrations();
-      const eventRegistration = userRegs.find(reg => 
-        reg.event && (reg.event._id === eventId || reg.event === eventId)
-      );
-      
-      if (eventRegistration) {
-        setUserRegistration(eventRegistration);
-      }
+      // Refresh registration status to get the actual data
+      setTimeout(() => {
+        checkRegistrationStatus();
+      }, 1000);
       
       onClose();
     } catch (error) {
@@ -227,18 +300,6 @@ const EventDetail = () => {
       });
     } finally {
       setRegistrationLoading(false);
-    }
-  };
-  
-  // Get status badge color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return 'yellow';
-      case 'approved': return 'green';
-      case 'rejected': return 'red';
-      case 'cancelled': return 'gray';
-      case 'completed': return 'blue';
-      default: return 'gray';
     }
   };
   
@@ -420,69 +481,102 @@ const EventDetail = () => {
                 </Grid>
               </MotionFlex>
               
-              {/* Registration Status */}
-              {userRegistration && (
-                <MotionFlex
-                  direction="column"
-                  bg={sectionBg}
-                  p={6}
-                  borderRadius="lg"
-                  mb={6}
-                  border="1px solid"
-                  borderColor={`${getStatusColor(userRegistration.status)}.300`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                >
-                  <Flex justify="space-between" align="center">
-                    <HStack>
-                      <Icon 
-                        as={userRegistration.status === 'rejected' ? FiX : FiInfo} 
-                        boxSize={5} 
-                        color={`${getStatusColor(userRegistration.status)}.500`} 
-                      />
-                      <Text fontWeight="bold">Your Registration Status:</Text>
-                    </HStack>
-                    <Badge 
-                      colorScheme={getStatusColor(userRegistration.status)} 
-                      fontSize="md"
-                      py={1}
-                      px={3}
-                      borderRadius="full"
-                    >
-                      {userRegistration.status.toUpperCase()}
-                    </Badge>
-                  </Flex>
-                  
-                  {userRegistration.status === 'rejected' && userRegistration.rejectionReason && (
-                    <Box mt={4} p={3} bg="red.50" borderRadius="md">
-                      <Text fontWeight="medium" color="red.700">Rejection Reason:</Text>
-                      <Text color="red.700">{userRegistration.rejectionReason}</Text>
-                    </Box>
-                  )}
-                  
-                  {userRegistration.status === 'approved' && (
-                    <Box mt={4}>
-                      <Text fontWeight="medium" color="green.700">
-                        Your registration has been approved! You can now select stands and equipment.
-                      </Text>
-                      <Button
-                        mt={3}
-                        colorScheme="teal"
-                        onClick={() => navigate(`/exhibitor/registrations/${userRegistration._id}`)}
-                      >
-                        Manage Registration
-                      </Button>
-                    </Box>
-                  )}
-                  
-                  {userRegistration.status === 'pending' && (
-                    <Text mt={4} color={mutedColor}>
-                      Your registration is currently under review. We'll notify you once it's approved or if additional information is needed.
-                    </Text>
-                  )}
-                </MotionFlex>
-              )}
+              {/* Registration Status - Show if hasRegistered is true, regardless of userRegistration being populated */}
+              {/* Condition simplifiée basée sur hasRegistered uniquement */}
+{hasRegistered ? (
+  <MotionFlex
+    direction="column"
+    bg={sectionBg}
+    p={6}
+    borderRadius="lg"
+    mb={6}
+    border="1px solid"
+    borderColor={`${getStatusColorScheme(userRegistration?.status || 'pending')}.300`}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay: 0.3 }}
+  >
+    <Flex justify="space-between" align="center">
+      <HStack>
+        <Icon 
+          as={(userRegistration?.status === 'rejected') ? FiX : FiInfo} 
+          boxSize={5} 
+          color={`${getStatusColorScheme(userRegistration?.status || 'pending')}.500`} 
+        />
+        <Text fontWeight="bold">Your Registration Status:</Text>
+      </HStack>
+      <Badge 
+        colorScheme={getStatusColorScheme(userRegistration?.status || 'pending')} 
+        fontSize="md"
+        py={1}
+        px={3}
+        borderRadius="full"
+      >
+        {getStatusDisplayText(userRegistration?.status || 'pending')}
+      </Badge>
+    </Flex>
+    
+    {userRegistration?.status === 'rejected' && userRegistration.rejectionReason && (
+      <Box mt={4} p={3} bg="red.50" borderRadius="md">
+        <Text fontWeight="medium" color="red.700">Rejection Reason:</Text>
+        <Text color="red.700">{userRegistration.rejectionReason}</Text>
+      </Box>
+    )}
+    
+    {userRegistration?.status === 'approved' && (
+      <Box mt={4}>
+        <Text fontWeight="medium" color="green.700">
+          Your registration has been approved! You can now select stands and equipment.
+        </Text>
+        <Button
+          mt={3}
+          colorScheme="teal"
+          onClick={() => navigate(`/exhibitor/registrations/${userRegistration._id}`)}
+        >
+          Manage Registration
+        </Button>
+      </Box>
+    )}
+    
+    {(!userRegistration || userRegistration.status === 'pending') && (
+      <Text mt={4} color={mutedColor}>
+        Your registration is currently under review. We'll notify you once it's approved or if additional information is needed.
+      </Text>
+    )}
+  </MotionFlex>
+) : (
+  <MotionBox
+    bg="teal.500"
+    p={6}
+    borderRadius="lg"
+    color="white"
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay: 0.5 }}
+  >
+    <Flex 
+      direction={{ base: "column", md: "row" }} 
+      justify="space-between" 
+      align={{ base: "start", md: "center" }}
+    >
+      <Box mb={{ base: 4, md: 0 }}>
+        <Heading size="md">Interested in participating?</Heading>
+        <Text mt={1}>
+          Register now to secure your spot at this event.
+        </Text>
+      </Box>
+      <Button 
+        bg="white" 
+        color="teal.500" 
+        size="lg"
+        _hover={{ bg: 'gray.100' }}
+        onClick={onOpen}
+      >
+        Register for this Event
+      </Button>
+    </Flex>
+  </MotionBox>
+)}
               
               {/* Description */}
               <MotionBox
@@ -503,44 +597,44 @@ const EventDetail = () => {
                 </Text>
                 
                 {/* Industry Sectors */}
-                    {event.allowedSectors && event.allowedSectors.length > 0 && (
-                    <Box mt={6}>
-                        <Text fontWeight="medium" mb={2}>Industry Sectors:</Text>
-                        <HStack spacing={2} flexWrap="wrap">
-                        {event.allowedSectors.map(sector => (
-                            <Tag 
-                            key={sector} 
-                            colorScheme="teal" 
-                            variant="subtle" 
-                            mb={2}
-                            >
-                            <Icon as={FiTag} mr={1} />
-                            {sector}
-                            </Tag>
-                        ))}
-                        </HStack>
-                    </Box>
-                    )}
+                {event.allowedSectors && event.allowedSectors.length > 0 && (
+                <Box mt={6}>
+                    <Text fontWeight="medium" mb={2}>Industry Sectors:</Text>
+                    <HStack spacing={2} flexWrap="wrap">
+                    {event.allowedSectors.map(sector => (
+                        <Tag 
+                        key={sector} 
+                        colorScheme="teal" 
+                        variant="subtle" 
+                        mb={2}
+                        >
+                        <Icon as={FiTag} mr={1} />
+                        {sector}
+                        </Tag>
+                    ))}
+                    </HStack>
+                </Box>
+                )}
 
-                    {/* Subsectors */}
-                    {event.allowedSubsectors && event.allowedSubsectors.length > 0 && (
-                    <Box mt={4}>
-                        <Text fontWeight="medium" mb={2}>Subsectors:</Text>
-                        <HStack spacing={2} flexWrap="wrap">
-                        {event.allowedSubsectors.map(subsector => (
-                            <Tag 
-                            key={subsector} 
-                            colorScheme="blue" 
-                            variant="subtle" 
-                            mb={2}
-                            >
-                            <Icon as={FiTag} mr={1} />
-                            {subsector}
-                            </Tag>
-                        ))}
-                        </HStack>
-                    </Box>
-                    )}
+                {/* Subsectors */}
+                {event.allowedSubsectors && event.allowedSubsectors.length > 0 && (
+                <Box mt={4}>
+                    <Text fontWeight="medium" mb={2}>Subsectors:</Text>
+                    <HStack spacing={2} flexWrap="wrap">
+                    {event.allowedSubsectors.map(subsector => (
+                        <Tag 
+                        key={subsector} 
+                        colorScheme="blue" 
+                        variant="subtle" 
+                        mb={2}
+                        >
+                        <Icon as={FiTag} mr={1} />
+                        {subsector}
+                        </Tag>
+                    ))}
+                    </HStack>
+                </Box>
+                )}
                 
                 {/* Special Conditions if available */}
                 {event.specialConditions && (
@@ -551,40 +645,7 @@ const EventDetail = () => {
                 )}
               </MotionBox>
               
-              {/* Register CTA */}
-              {!userRegistration && (
-                <MotionBox
-                  bg="teal.500"
-                  p={6}
-                  borderRadius="lg"
-                  color="white"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.5 }}
-                >
-                  <Flex 
-                    direction={{ base: "column", md: "row" }} 
-                    justify="space-between" 
-                    align={{ base: "start", md: "center" }}
-                  >
-                    <Box mb={{ base: 4, md: 0 }}>
-                      <Heading size="md">Interested in participating?</Heading>
-                      <Text mt={1}>
-                        Register now to secure your spot at this event.
-                      </Text>
-                    </Box>
-                    <Button 
-                      bg="white" 
-                      color="teal.500" 
-                      size="lg"
-                      _hover={{ bg: 'gray.100' }}
-                      onClick={onOpen}
-                    >
-                      Register for this Event
-                    </Button>
-                  </Flex>
-                </MotionBox>
-              )}
+
             </GridItem>
             
             {/* Sidebar - Official Exhibitors */}
@@ -682,7 +743,7 @@ const EventDetail = () => {
                 </Box>
               </MotionBox>
               
-              {/* Organizer Info - Updated with organizerData */}
+              {/* Organizer Info */}
               {event.organizer && (
                 <MotionBox
                   mt={6}
@@ -723,7 +784,7 @@ const EventDetail = () => {
         </Container>
       </MotionBox>
       
-      {/* Registration Modal Component */}
+      {/* Registration Modal */}
       <RegistrationModal
         isOpen={isOpen}
         onClose={onClose}
