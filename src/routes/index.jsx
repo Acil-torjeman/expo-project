@@ -5,7 +5,7 @@ import Selectrole from '../pages/Selectrole';
 import Login from '../pages/auth/Login';
 import ExhibitorSignup from '../pages/auth/ExhibitorSignup';
 import OrganizerSignup from '../pages/auth/OrganizerSignup';
-import VerifyEmailPage from '../pages/auth/VerifyEmailPage'; // Mise à jour ici
+import VerifyEmailPage from '../pages/auth/VerifyEmailPage'; 
 import ForgotPassword from '../pages/auth/ForgotPassword';
 import ResetPassword from '../pages/auth/ResetPassword';
 import NotFound from '../pages/NotFound';
@@ -25,7 +25,7 @@ const LazyLoadingFallback = () => (
     alignItems: 'center', 
     height: '100vh' 
   }}>
-    Chargement...
+    Loading...
   </div>
 );
 

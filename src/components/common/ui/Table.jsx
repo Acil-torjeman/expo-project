@@ -86,7 +86,7 @@ const Table = ({
               <Td colSpan={columns.length + (showSelection ? 1 : 0)} textAlign="center" py={10}>
                 <Flex direction="column" align="center" justify="center">
                   <Spinner size="lg" color="teal.500" mb={4} />
-                  <Text>Loading data...</Text>
+                  <Text>Loading...</Text>
                 </Flex>
               </Td>
             </Tr>

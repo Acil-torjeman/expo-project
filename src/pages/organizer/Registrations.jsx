@@ -1,4 +1,3 @@
-
 // src/pages/organizer/Registrations.jsx
 import React, { useState } from 'react';
 import {
@@ -22,15 +21,13 @@ import {
   FiRefreshCw,
   FiX,
   FiUsers,
-  FiCheckCircle,
-  FiXCircle,
   FiEye,
+  FiCheckSquare,
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import TableSearchBar from '../../components/common/ui/TableSearchBar';
 import FilterModal from '../../components/common/ui/FilterModal';
-import ConfirmDialog from '../../components/common/ui/ConfirmDialog';
 import Table from '../../components/common/ui/Table';
 import RegistrationFilterForm from '../../components/organizer/registrations/RegistrationFilterForm';
 import RegistrationDetailsModal from '../../components/organizer/registrations/RegistrationDetailsModal';
@@ -40,7 +37,7 @@ import useRegistrations from '../../hooks/useRegistrations';
 import { getStatusColorScheme, getStatusDisplayText } from '../../constants/registrationConstants';
 
 // Use proper motion component
-const MotionBox = motion.div;
+const MotionBox = motion(Box);
 
 const Registrations = () => {
   const toast = useToast();
@@ -89,7 +86,7 @@ const Registrations = () => {
     onClose: onReviewClose
   } = useDisclosure();
   
-  // Define table columns
+  // Define table columns with simplified actions
   const columns = [
     {
       header: 'Company',
@@ -160,6 +157,7 @@ const Registrations = () => {
       accessor: '_id',
       render: (item) => (
         <HStack spacing={2}>
+          {/* View details icon */}
           <IconButton
             aria-label="View details"
             icon={<FiEye />}
@@ -172,39 +170,26 @@ const Registrations = () => {
             }}
           />
           
+          {/* Decision icon - only shown for pending registrations */}
           {item.status === 'pending' && (
-            <>
-              <IconButton
-                aria-label="Approve registration"
-                icon={<FiCheckCircle />}
-                size="sm"
-                colorScheme="green"
-                variant="ghost"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAction('approve', item);
-                }}
-              />
-              
-              <IconButton
-                aria-label="Reject registration"
-                icon={<FiXCircle />}
-                size="sm"
-                colorScheme="red"
-                variant="ghost"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAction('reject', item);
-                }}
-              />
-            </>
+            <IconButton
+              aria-label="Review registration"
+              icon={<FiCheckSquare />}
+              size="sm"
+              colorScheme="teal"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction('review', item);
+              }}
+            />
           )}
         </HStack>
       )
     }
   ];
   
-  // Handle registration actions (view, approve, reject)
+  // Handle registration actions (view, review)
   const handleAction = (action, item) => {
     setSelectedItem(item);
     
@@ -212,18 +197,13 @@ const Registrations = () => {
       case 'view':
         onDetailsOpen();
         break;
-      case 'approve':
-        handleApprove();
-        break;
-      case 'reject':
-        // Open review modal for rejection with reason
+      case 'review':
         onReviewOpen();
         break;
       default:
         console.log('Unknown action:', action);
     }
   };
-
   
   // Handle approve action
   const handleApprove = async () => {
@@ -532,4 +512,5 @@ const Registrations = () => {
     </DashboardLayout>
   );
 };
+
 export default Registrations;
