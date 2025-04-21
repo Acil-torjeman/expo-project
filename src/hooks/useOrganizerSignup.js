@@ -3,7 +3,7 @@ import { useToast } from '@chakra-ui/react';
 import axios from 'axios';
 
 // URL de l'API backend
-const API_URL = 'http://localhost:5001/auth';
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Liste de pays de secours si l'API échoue
 const fallbackCountries = [

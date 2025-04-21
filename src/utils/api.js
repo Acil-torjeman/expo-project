@@ -4,7 +4,7 @@ import { authService } from '../services/auth.service';
 
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: 'http://localhost:5001', // Your backend URL
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },

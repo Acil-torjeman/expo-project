@@ -49,7 +49,7 @@ const VerifyEmail = () => {
         console.log('Verifying email with token:', token);
         
         // Faire une requête au backend
-        const response = await fetch(`http://localhost:5001/auth/verify-email?token=${encodeURIComponent(token)}`);
+       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/verify-email?token=${encodeURIComponent(token)}`);
         
         console.log('Response status:', response.status);
         

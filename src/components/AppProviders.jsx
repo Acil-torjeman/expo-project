@@ -5,7 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import theme from '../theme';
 import { AuthProvider } from '../context/AuthContext';
 import { SidebarProvider } from '../context/SidebarContext';
-import { SearchProvider } from '../context/SearchContext';
+
 import { DashboardProvider } from '../context/DashboardContext';
 
 /**
@@ -24,11 +24,10 @@ const AppProviders = ({ children }) => {
         <BrowserRouter>
           <AuthProvider>
             <SidebarProvider>
-              <SearchProvider>
                 <DashboardProvider>
                   {children}
                 </DashboardProvider>
-              </SearchProvider>
+              
             </SidebarProvider>
           </AuthProvider>
         </BrowserRouter>

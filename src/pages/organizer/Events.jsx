@@ -62,6 +62,7 @@ const Events = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [viewEventId, setViewEventId] = useState(null);
  
+
   // Get events data and functions from custom hook
   const {
     events,
@@ -76,11 +77,11 @@ const Events = () => {
     uploadEventImage,
     getActiveFiltersCount,
   } = useEvents();
-  
+
+
   // Modal states using Chakra's useDisclosure
   const {
-    isOpen: isFilterOpen,
-    onOpen: onFilterOpen,
+    isOpen: isFilterOpen,    onOpen: onFilterOpen,
     onClose: onFilterClose,
   } = useDisclosure();
   

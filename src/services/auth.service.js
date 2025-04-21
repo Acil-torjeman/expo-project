@@ -1,9 +1,8 @@
 // src/services/auth.service.js
 import axios from 'axios';
-
 // URL of the backend API with the correct port
-const API_URL = 'http://localhost:5001/auth';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
 export const authService = {
 
   _isRefreshing: false,
@@ -13,7 +12,7 @@ export const authService = {
   login: async (credentials) => {
     try {
       console.log('Login credentials:', credentials);
-      const response = await axios.post(`${API_URL}/login`, credentials);
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
       
       console.log('Login response:', response.data);
       
@@ -72,7 +71,7 @@ export const authService = {
       });
       
       // Send the request with an increased timeout
-      const response = await axios.post(`${API_URL}/exhibitor-signup`, data, {
+      const response = await axios.post(`${API_BASE_URL}/exhibitor-signup`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -159,7 +158,7 @@ export const authService = {
       }
       
       // Send refresh request
-      const response = await axios.post(`${API_URL}/refresh`, {
+      const response = await axios.post(`${API_BASE_URL}/refresh`, {
         userId: userId,
         refreshToken: refreshToken,
       });
@@ -209,7 +208,7 @@ export const authService = {
       // Try to notify server but don't wait
       if (refreshToken && userId) {
         try {
-          axios.post(`${API_URL}/logout`, {
+          axios.post(`${API_BASE_URL}/logout`, {
             userId: userId,
             refreshToken: refreshToken,
           }).catch(e => {
@@ -231,7 +230,7 @@ export const authService = {
   // Verify email
   verifyEmail: async (token) => {
     try {
-      const response = await axios.get(`${API_URL}/verify-email?token=${token}`);
+      const response = await axios.get(`${API_BASE_URL}/verify-email?token=${token}`);
       return response.data;
     } catch (error) {
       console.error("Email verification error:", error);
@@ -249,7 +248,7 @@ export const authService = {
   // Resend verification email
   resendVerificationEmail: async (email) => {
     try {
-      const response = await axios.post(`${API_URL}/resend-verification`, { email });
+      const response = await axios.post(`${API_BASE_URL}/resend-verification`, { email });
       return response.data;
     } catch (error) {
       console.error("Error resending verification email:", error);
@@ -294,7 +293,7 @@ export const authService = {
   // Forgot password
   forgotPassword: async (data) => {
     try {
-      const response = await axios.post(`${API_URL}/forgot-password`, data);
+      const response = await axios.post(`${API_BASE_URL}/forgot-password`, data);
       return response.data;
     } catch (error) {
       console.error("Error in forgot password:", error);
@@ -310,7 +309,7 @@ export const authService = {
   // Reset password
   resetPassword: async (data) => {
     try {
-      const response = await axios.post(`${API_URL}/reset-password`, data);
+      const response = await axios.post(`${API_BASE_URL}/reset-password`, data);
       return response.data;
     } catch (error) {
       console.error("Error in reset password:", error);

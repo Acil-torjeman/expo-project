@@ -4,7 +4,7 @@ import axios from 'axios';
 import industrySectors from '../constants/industrySectors';
 
 // URL de l'API backend
-const API_URL = 'http://localhost:5001/auth';
+const API_URL =  import.meta.env.VITE_API_BASE_URL;
 
 // Liste de pays de secours si l'API échoue
 const fallbackCountries = [

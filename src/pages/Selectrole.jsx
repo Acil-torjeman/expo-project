@@ -21,8 +21,8 @@ import { FaBuilding, FaCalendarCheck, FaChevronDown, FaCheck, FaUser, FaEnvelope
 import { useNavigate } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import PublicLayout from '../layouts/PublicLayout';
-import boothLightImg from '../assets/images/booth-light.svg';
-import boothDarkImg from '../assets/images/booth-dark.svg';
+import boothLightImg from '../assets/images/booth-light.png';
+
 
 // Wrap motion components
 const MotionBox = motion(Box);
@@ -50,7 +50,8 @@ const RoleCard = ({ title, description, icon, benefits, cta, onClick }) => {
       } 
     }
   };
-  
+  console.log("VITE_API_URL =", import.meta.env.VITE_API_URL);
+
   const iconVariants = {
     hidden: { scale: 0.8, opacity: 0 },
     visible: { 
@@ -219,7 +220,7 @@ const Hero = ({ scrollToRoles }) => {
   );
   
   // Use appropriate image based on color mode
-  const boothImage = useColorModeValue(boothLightImg, boothDarkImg);
+  const boothImage = boothLightImg;
 
   return (
     <Box 
@@ -285,9 +286,12 @@ const Hero = ({ scrollToRoles }) => {
               transition={{ duration: 0.5, delay: 0.4 }}
             >
               MyExpo Platform connects exhibitors and organizers with powerful tools to create
-              and manage successful exhibitions. Choose your role to get started today.
+              and manage successful exhibitions. Choose your role to get started today. 
+              {import.meta.env.VITE_API_URL}
             </MotionText>
+
             
+
             <MotionBox
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -344,7 +348,7 @@ const Hero = ({ scrollToRoles }) => {
                 <Image 
                   src={boothImage} 
                   alt="Exhibition Booth" 
-                  maxH="550px" 
+                  maxH="750px" 
                   objectFit="contain"
                 />
               </MotionBox>

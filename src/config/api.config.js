@@ -2,7 +2,7 @@
 // Centralized API configuration
 
 // Get API URL from environment variable or use default
-const API_URL = 'http://localhost:5001';
+const API_URL =  import.meta.env.VITE_API_BASE_URL;
 
 export default {
   API_URL,
