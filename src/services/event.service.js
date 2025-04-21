@@ -162,6 +162,73 @@ class EventService {
       return null;
     }
   }
+  
+  /**
+   * Get all stands for an event
+   */
+  async getEventStands(eventId) {
+    try {
+      const response = await api.get(`/events/${eventId}/stands`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch stands for event ${eventId}:`, error);
+      return [];
+    }
+  }
+  
+  /**
+   * Get available stands for an event
+   */
+  async getAvailableStands(eventId) {
+    try {
+      // First fetch the event to ensure we have plan information
+      const event = await this.getEventById(eventId);
+      
+      // Check if the event has a plan associated
+      if (!event || !event.plan) {
+        console.warn(`Event ${eventId} has no plan associated`);
+        return [];
+      }
+      
+      // Try to get available stands from the event endpoint first
+      try {
+        const response = await api.get(`/events/${eventId}/stands/available`);
+        
+        // If we got stands, return them
+        if (response.data && response.data.length > 0) {
+          return response.data;
+        }
+        
+        // If no stands returned, try plan-based approach as fallback
+        console.log(`No stands returned from event endpoint, trying plan approach`);
+      } catch (error) {
+        console.error(`Error fetching available stands from event endpoint:`, error);
+        // Continue to plan-based approach as fallback
+      }
+      
+      // Extract plan ID for fallback approach
+      const planId = typeof event.plan === 'object' ? event.plan._id : event.plan;
+      
+      if (!planId) {
+        return [];
+      }
+      
+      // Try getting stands by plan directly
+      try {
+        const planResponse = await api.get(`/stands/plan/${planId}`);
+        
+        // Filter only available stands
+        const availableStands = planResponse.data.filter(stand => stand.status === 'available');
+        return availableStands;
+      } catch (planError) {
+        console.error(`Error getting stands from plan ${planId}:`, planError);
+        return [];
+      }
+    } catch (error) {
+      console.error(`Error in getAvailableStands for event ${eventId}:`, error);
+      return [];
+    }
+  }
 
   /**
    * Handle errors consistently

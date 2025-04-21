@@ -1,4 +1,4 @@
-// src/pages/exhibitor/SelectStands.jsx
+// src/pages/Exhibitor/SelectStands.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -52,6 +52,7 @@ import {
   FiGrid,
   FiFilter,
   FiSquare,
+  FiAlertTriangle,
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import registrationService from '../../services/registration.service';
@@ -71,6 +72,7 @@ const SelectStands = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [typeFilter, setTypeFilter] = useState('');
+  const [error, setError] = useState(null);
   
   useEffect(() => {
     fetchRegistrationAndStands();
@@ -82,22 +84,38 @@ const SelectStands = () => {
   
   const fetchRegistrationAndStands = async () => {
     setLoading(true);
+    setError(null);
     try {
       // Fetch registration details
       const registrationData = await registrationService.getRegistrationById(registrationId);
+      console.log("Registration data:", registrationData);
       setRegistration(registrationData);
       
       // Set any already selected stands
       if (registrationData.stands && registrationData.stands.length > 0) {
+        console.log("Already selected stands:", registrationData.stands);
         setSelectedStands(registrationData.stands.map(stand => stand._id));
       }
       
       // Fetch available stands for the event
-      if (registrationData.event && registrationData.event._id) {
+      if (registrationData.event && (registrationData.event._id || typeof registrationData.event === 'string')) {
         const eventId = typeof registrationData.event === 'object' ? 
           registrationData.event._id : registrationData.event;
         
+        console.log("Getting stands for event:", eventId);
+        
+        // Get event details first to ensure we have plan information
+        const eventDetails = await eventService.getEventById(eventId);
+        console.log("Event details:", eventDetails);
+        
+        if (!eventDetails.plan) {
+          setError("This event doesn't have a floor plan assigned yet. Please contact the organizer.");
+          setLoading(false);
+          return;
+        }
+        
         const standsData = await eventService.getAvailableStands(eventId);
+        console.log("Available stands returned:", standsData);
         
         // Combine available stands with already selected stands
         const allStands = [...standsData];
@@ -109,15 +127,21 @@ const SelectStands = () => {
             selected => !standsData.some(available => available._id === selected._id)
           );
           
+          console.log("Adding previously selected stands:", selectedStandsNotInAvailable);
+          
           allStands.push(...selectedStandsNotInAvailable);
         }
         
         setAvailableStands(allStands);
+      } else {
+        setError("Registration doesn't have a valid event associated with it.");
       }
     } catch (error) {
+      console.error("Error fetching stands:", error);
+      setError(error.message || 'Failed to load stands. Please try again.');
       toast({
         title: 'Error',
-        description: 'Failed to load stands. Please try again.',
+        description: error.message || 'Failed to load stands. Please try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -230,6 +254,44 @@ const SelectStands = () => {
     );
   }
   
+  if (error) {
+    return (
+      <DashboardLayout>
+        <Box p={6}>
+          <Breadcrumb separator={<Icon as={FiChevronRight} color="gray.500" />} mb={6}>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => navigate('/exhibitor/registrations')}>
+                Registrations
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}>
+                Registration Details
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem isCurrentPage>
+              <BreadcrumbLink>Select Stands</BreadcrumbLink>
+            </BreadcrumbItem>
+          </Breadcrumb>
+          
+          <Alert status="error" variant="solid" borderRadius="md">
+            <AlertIcon />
+            <AlertTitle mr={2}>Error Loading Stands</AlertTitle>
+            <Text>{error}</Text>
+          </Alert>
+          
+          <Button 
+            mt={6} 
+            leftIcon={<FiChevronLeft />}
+            onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}
+          >
+            Back to Registration
+          </Button>
+        </Box>
+      </DashboardLayout>
+    );
+  }
+  
   if (!registration || registration.status !== 'approved') {
     return (
       <DashboardLayout>
@@ -289,7 +351,7 @@ const SelectStands = () => {
                     <Text>
                       Download the floor plan to see the layout and locations of all stands.
                     </Text>
-                    {plan && plan._id && (
+                    {plan && plan.pdfPath && (
                       <Link 
                         href={getPlanFileUrl(plan.pdfPath)} 
                         target="_blank" 
@@ -305,6 +367,12 @@ const SelectStands = () => {
                           Download Floor Plan
                         </Button>
                       </Link>
+                    )}
+                    {!plan.pdfPath && plan._id && (
+                      <Alert status="warning" mt={2} size="sm">
+                        <AlertIcon />
+                        Plan file not available
+                      </Alert>
                     )}
                   </Box>
                 </Alert>
@@ -358,7 +426,18 @@ const SelectStands = () => {
                 </Text>
               </CardHeader>
               <CardBody>
-                {filteredStands.length === 0 ? (
+                {availableStands.length === 0 ? (
+                  <Alert status="info" borderRadius="md">
+                    <AlertIcon />
+                    <Box>
+                      <AlertTitle>No stands available</AlertTitle>
+                      <Text>
+                        There are no stands available for this event. This may be because the organizer 
+                        hasn't created any stands yet, or all stands are already reserved.
+                      </Text>
+                    </Box>
+                  </Alert>
+                ) : filteredStands.length === 0 ? (
                   <Alert status="info" borderRadius="md">
                     <AlertIcon />
                     <Text>No stands found matching your criteria</Text>

@@ -11,6 +11,9 @@ import ExhibitorEvents from '../pages/Exhibitor/Events';
 import ExhibitorEventDetail from '../pages/Exhibitor/EventDetail';
 import ExhibitorMessages from '../pages/exhibitor/Messages';
 import ExhibitorRegistrations from '../pages/exhibitor/Registrations';
+import ExhibitorRegistrationDetail from '../pages/Exhibitor/RegistrationDetail';
+import ExhibitorSelectStands from '../pages/Exhibitor/SelectStands';
+import ExhibitorSelectEquipment from '../pages/Exhibitor/SelectEquipment';
 import ExhibitorStands from '../pages/exhibitor/Stands';
 import ExhibitorEquipment from '../pages/exhibitor/Equipment';
 import ExhibitorInvoices from '../pages/exhibitor/Invoices';
@@ -61,6 +64,36 @@ const ExhibitorRoutes = () => {
         element={
           <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
             <ExhibitorRegistrations />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Registration Detail - Missing route that's causing the 404 */}
+      <Route 
+        path="registrations/:registrationId" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <ExhibitorRegistrationDetail />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Select Stands - Missing route for stand selection */}
+      <Route 
+        path="registrations/:registrationId/stands" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <ExhibitorSelectStands />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Select Equipment - Missing route for equipment selection */}
+      <Route 
+        path="registrations/:registrationId/equipment" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <ExhibitorSelectEquipment />
           </ProtectedRoute>
         } 
       />
