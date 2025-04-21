@@ -27,10 +27,36 @@ class RegistrationService {
    */
   async getMyRegistrations() {
     try {
+      // Use the my-registrations endpoint specifically for exhibitors
       const response = await api.get('/registrations/my-registrations');
+      
+      // Process the response to ensure it includes all necessary data
+      if (Array.isArray(response.data)) {
+        // Ensure each registration has event and exhibitor details loaded
+        const enhancedRegistrations = await Promise.all(response.data.map(async (registration) => {
+          // If registration already has populated fields, return as is
+          if (registration.event && typeof registration.event === 'object' && 
+              registration.exhibitor && typeof registration.exhibitor === 'object') {
+            return registration;
+          }
+          
+          // Otherwise, fetch complete registration details
+          try {
+            const fullRegistration = await this.getRegistrationById(registration._id);
+            return fullRegistration;
+          } catch (error) {
+            console.error(`Failed to fetch details for registration ${registration._id}:`, error);
+            return registration;
+          }
+        }));
+        
+        return enhancedRegistrations;
+      }
+      
       return response.data;
     } catch (error) {
-      this._handleError(error, 'Failed to fetch your registrations');
+      console.error('Failed to fetch your registrations:', error);
+      // Return empty array instead of throwing to avoid breaking UI
       return [];
     }
   }
@@ -61,9 +87,20 @@ class RegistrationService {
   async getRegistrationById(id) {
     try {
       const response = await api.get(`/registrations/${id}`);
-      // Enrich with exhibitor data
-      const enriched = await this.enrichRegistrationsWithExhibitorData([response.data]);
-      return enriched[0];
+      
+      // Ensure full population of exhibitor and event data
+      if (response.data) {
+        // If exhibitor isn't fully populated, enrich it
+        if (response.data.exhibitor && typeof response.data.exhibitor !== 'object') {
+          const enrichedRegs = await this.enrichRegistrationsWithExhibitorData([response.data]);
+          return enrichedRegs[0];
+        }
+        
+        // Otherwise return as is
+        return response.data;
+      }
+      
+      throw new Error(`Registration with ID ${id} not found`);
     } catch (error) {
       this._handleError(error, `Failed to fetch registration ${id}`);
       throw error;

@@ -148,7 +148,10 @@ export default function PublicFooter() {
           fontSize="sm"
         >
           <Text>
-            © {currentYear} MyExpo Platform. All rights reserved
+            © {currentYear} MyExpo Platform. Made with love by {' '} 
+            <Link href="https://eyeotech.com/" isExternal color={linkColor} _hover={{ color: linkHoverColor }}>
+              Eyeotech ♥
+            </Link>
           </Text>
           <HStack spacing={4} mt={{ base: 4, md: 0 }}>
             <Link as={RouterLink} to="#" color={linkColor} _hover={{ color: linkHoverColor }}>

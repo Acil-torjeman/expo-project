@@ -55,7 +55,6 @@ const REQUIRED_FIELDS_BY_STEP = [
     'email', 'password', 'confirmPassword', 'consent', 'dataConsent'
   ]
 ];
-
 const useOrganizerSignup = () => {
   const toast = useToast();
   

@@ -701,7 +701,7 @@ const useSignup = () => {
       });
       
       // Envoyer la requête
-      const response = await axios.post(`${API_URL}/exhibitor-signup`, data, {
+      const response = await axios.post(`${API_URL}/auth/exhibitor-signup`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

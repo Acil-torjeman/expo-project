@@ -1,0 +1,537 @@
+// src/pages/exhibitor/SelectEquipment.jsx
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Button,
+  Flex,
+  Heading,
+  Text,
+  SimpleGrid,
+  Card,
+  CardBody,
+  CardHeader,
+  HStack,
+  VStack,
+  Checkbox,
+  Divider,
+  Badge,
+  useToast,
+  Spinner,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  Icon,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  Stack,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Image,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+} from '@chakra-ui/react';
+import {
+  FiChevronRight,
+  FiChevronLeft,
+  FiSearch,
+  FiInfo,
+  FiCheckCircle,
+  FiFilter,
+  FiPackage,
+  FiDatabase,
+} from 'react-icons/fi';
+import DashboardLayout from '../../layouts/DashboardLayout';
+import registrationService from '../../services/registration.service';
+import eventService from '../../services/event.service';
+import equipmentService from '../../services/equipment.service';
+import { getEquipmentImageUrl } from '../../utils/fileUtils';
+
+const SelectEquipment = () => {
+  const { registrationId } = useParams();
+  const navigate = useNavigate();
+  const toast = useToast();
+  
+  const [registration, setRegistration] = useState(null);
+  const [availableEquipment, setAvailableEquipment] = useState([]);
+  const [selectedEquipment, setSelectedEquipment] = useState([]);
+  const [filteredEquipment, setFilteredEquipment] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  
+  useEffect(() => {
+    fetchRegistrationAndEquipment();
+  }, [registrationId]);
+  
+  useEffect(() => {
+    filterEquipment();
+  }, [availableEquipment, searchQuery, typeFilter]);
+  
+  const fetchRegistrationAndEquipment = async () => {
+    setLoading(true);
+    try {
+      // Fetch registration details
+      const registrationData = await registrationService.getRegistrationById(registrationId);
+      setRegistration(registrationData);
+      
+      // Set any already selected equipment
+      if (registrationData.equipment && registrationData.equipment.length > 0) {
+        setSelectedEquipment(registrationData.equipment.map(item => item._id));
+      }
+      
+      // Fetch available equipment for the event
+      if (registrationData.event && registrationData.event._id) {
+        const eventId = typeof registrationData.event === 'object' ? 
+          registrationData.event._id : registrationData.event;
+        
+        const equipmentData = await equipmentService.getEventEquipment(eventId);
+        
+        // Combine available equipment with already selected equipment
+        const allEquipment = [...equipmentData];
+        
+        // If there are already selected equipment, add them to the available equipment
+        if (registrationData.equipment && registrationData.equipment.length > 0) {
+          // Filter out any equipment that are already in the available equipment list
+          const selectedEquipmentNotInAvailable = registrationData.equipment.filter(
+            selected => !equipmentData.some(available => available._id === selected._id)
+          );
+          
+          allEquipment.push(...selectedEquipmentNotInAvailable);
+        }
+        
+        setAvailableEquipment(allEquipment);
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load equipment. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const filterEquipment = () => {
+    let filtered = [...availableEquipment];
+    
+    // Apply search filter
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.name.toLowerCase().includes(query) ||
+        item.type.toLowerCase().includes(query) ||
+        (item.description && item.description.toLowerCase().includes(query))
+      );
+    }
+    
+    // Apply type filter
+    if (typeFilter !== '') {
+      filtered = filtered.filter(item => item.type === typeFilter);
+    }
+    
+    setFilteredEquipment(filtered);
+  };
+  
+  const handleSelectEquipment = (equipmentId) => {
+    setSelectedEquipment(prev => {
+      if (prev.includes(equipmentId)) {
+        return prev.filter(id => id !== equipmentId);
+      } else {
+        return [...prev, equipmentId];
+      }
+    });
+  };
+  
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+  
+  const handleTypeFilterChange = (type) => {
+    setTypeFilter(prev => prev === type ? '' : type);
+  };
+  
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await registrationService.selectEquipment(registrationId, {
+        equipmentIds: selectedEquipment,
+        selectionCompleted: true
+      });
+      
+      toast({
+        title: 'Equipment Selected',
+        description: 'Your equipment selection has been saved successfully',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      
+      // Navigate back to registration details
+      navigate(`/exhibitor/registrations/${registrationId}`);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to save equipment selection',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  const getEquipmentTypes = () => {
+    const types = new Set();
+    availableEquipment.forEach(item => types.add(item.type));
+    return Array.from(types);
+  };
+  
+  const calculateTotal = () => {
+    return availableEquipment
+      .filter(item => selectedEquipment.includes(item._id))
+      .reduce((total, item) => total + (item.price || 0), 0);
+  };
+  
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <Flex justify="center" align="center" minH="500px">
+          <Spinner size="xl" color="teal.500" thickness="4px" />
+        </Flex>
+      </DashboardLayout>
+    );
+  }
+  
+  if (!registration || registration.status !== 'approved' || !registration.standSelectionCompleted) {
+    return (
+      <DashboardLayout>
+        <Box p={8} textAlign="center">
+          <Alert status="error" borderRadius="md">
+            <AlertIcon />
+            <AlertTitle>
+              {!registration ? 'Registration not found' : 
+               registration.status !== 'approved' ? 'Registration not approved' : 
+               'You must select stands first'}
+            </AlertTitle>
+          </Alert>
+          <Button 
+            mt={6} 
+            colorScheme="teal" 
+            onClick={() => navigate('/exhibitor/registrations')}
+          >
+            Back to Registrations
+          </Button>
+        </Box>
+      </DashboardLayout>
+    );
+  }
+  
+  const event = registration.event || {};
+  const equipmentTypes = getEquipmentTypes();
+  
+  return (
+    <DashboardLayout>
+      <Box p={4}>
+        {/* Breadcrumb navigation */}
+        <Breadcrumb separator={<Icon as={FiChevronRight} color="gray.500" />} mb={6}>
+          <BreadcrumbItem>
+            <BreadcrumbLink onClick={() => navigate('/exhibitor/registrations')}>
+              Registrations
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbLink onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}>
+              Registration Details
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbLink onClick={() => navigate(`/exhibitor/registrations/${registrationId}/stands`)}>
+              Select Stands
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>
+            <BreadcrumbLink>Select Equipment</BreadcrumbLink>
+          </BreadcrumbItem>
+        </Breadcrumb>
+        
+        <Heading size="lg" mb={6}>Select Additional Equipment</Heading>
+        
+        <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6}>
+          {/* Left Column - Equipment Selection */}
+          <Box gridColumn={{ lg: "span 2" }}>
+            {/* Equipment search and filters */}
+            <Card mb={6}>
+              <CardBody>
+                <InputGroup mb={4}>
+                  <InputLeftElement pointerEvents="none">
+                    <Icon as={FiSearch} color="gray.400" />
+                  </InputLeftElement>
+                  <Input 
+                    placeholder="Search equipment by name, type, or description..." 
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                  />
+                </InputGroup>
+                
+                <Text fontWeight="medium" mb={2}>Filter by Type:</Text>
+                <HStack wrap="wrap" spacing={3} mb={4}>
+                  {equipmentTypes.map(type => (
+                    <Button
+                      key={type}
+                      size="sm"
+                      variant={typeFilter === type ? "solid" : "outline"}
+                      colorScheme={typeFilter === type ? "teal" : "gray"}
+                      leftIcon={<FiPackage />}
+                      onClick={() => handleTypeFilterChange(type)}
+                    >
+                      {type}
+                    </Button>
+                  ))}
+                </HStack>
+                
+                <Divider mb={4} />
+                
+                <Text fontWeight="medium" mb={2}>
+                  {filteredEquipment.length} item{filteredEquipment.length !== 1 ? 's' : ''} available
+                </Text>
+              </CardBody>
+            </Card>
+            
+            {/* Equipment List */}
+            <Card>
+              <CardHeader pb={0}>
+                <Heading size="md">Available Equipment</Heading>
+                <Text color="gray.500" fontSize="sm" mt={1}>
+                  Select the equipment you wish to use for this event
+                </Text>
+              </CardHeader>
+              <CardBody>
+                {filteredEquipment.length === 0 ? (
+                  <Alert status="info" borderRadius="md">
+                    <AlertIcon />
+                    <Text>No equipment found matching your criteria</Text>
+                  </Alert>
+                ) : (
+                  <Tabs variant="enclosed" colorScheme="teal">
+                    <TabList>
+                      <Tab>Grid View</Tab>
+                      <Tab>List View</Tab>
+                    </TabList>
+                    
+                    <TabPanels>
+                      {/* Grid View */}
+                      <TabPanel px={0}>
+                        <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
+                          {filteredEquipment.map(item => {
+                            const isSelected = selectedEquipment.includes(item._id);
+                            
+                            return (
+                              <Card 
+                                key={item._id} 
+                                variant="outline"
+                                borderColor={isSelected ? "teal.500" : "gray.200"}
+                                bg={isSelected ? "teal.50" : "white"}
+                                _hover={{ 
+                                  boxShadow: "md",
+                                  borderColor: "teal.300"
+                                }}
+                                cursor="pointer"
+                                onClick={() => handleSelectEquipment(item._id)}
+                                position="relative"
+                                overflow="hidden"
+                              >
+                                {isSelected && (
+                                  <Icon 
+                                    as={FiCheckCircle} 
+                                    position="absolute" 
+                                    top={2} 
+                                    right={2} 
+                                    color="teal.500"
+                                    boxSize={5}
+                                    zIndex={1}
+                                  />
+                                )}
+                                
+                                {item.imagePath && (
+                                  <Box height="120px" overflow="hidden">
+                                    <Image 
+                                      src={getEquipmentImageUrl(item.imagePath)} 
+                                      alt={item.name}
+                                      objectFit="cover"
+                                      w="100%"
+                                      h="100%"
+                                      fallback={
+                                        <Flex h="100%" align="center" justify="center" bg="gray.100">
+                                          <Icon as={FiPackage} boxSize={8} color="gray.400" />
+                                        </Flex>
+                                      }
+                                    />
+                                  </Box>
+                                )}
+                                
+                                <CardBody>
+                                  <Heading size="sm" mb={2}>{item.name}</Heading>
+                                  <Badge mb={2}>{item.type}</Badge>
+                                  
+                                  {item.description && (
+                                    <Text fontSize="sm" color="gray.600" noOfLines={2} mb={3}>
+                                      {item.description}
+                                    </Text>
+                                  )}
+                                  
+                                  <Text fontWeight="bold" color="teal.600">
+                                    ${item.price || 0}
+                                  </Text>
+                                </CardBody>
+                              </Card>
+                            );
+                          })}
+                        </SimpleGrid>
+                      </TabPanel>
+                      
+                      {/* List View */}
+                      <TabPanel px={0}>
+                        <VStack spacing={2} align="stretch">
+                          {filteredEquipment.map(item => {
+                            const isSelected = selectedEquipment.includes(item._id);
+                            
+                            return (
+                              <Card 
+                                key={item._id} 
+                                variant="outline"
+                                borderColor={isSelected ? "teal.500" : "gray.200"}
+                                bg={isSelected ? "teal.50" : "white"}
+                                _hover={{ 
+                                  boxShadow: "md",
+                                  borderColor: "teal.300"
+                                }}
+                                cursor="pointer"
+                                onClick={() => handleSelectEquipment(item._id)}
+                              >
+                                <CardBody>
+                                  <Flex justify="space-between" align="center">
+                                    <Box>
+                                      <Heading size="sm" mb={1}>{item.name}</Heading>
+                                      <HStack spacing={2} mb={1}>
+                                        <Badge>{item.type}</Badge>
+                                        <Badge colorScheme="green">${item.price || 0}</Badge>
+                                      </HStack>
+                                      {item.description && (
+                                        <Text fontSize="sm" color="gray.600" noOfLines={1}>
+                                          {item.description}
+                                        </Text>
+                                      )}
+                                    </Box>
+                                    <Checkbox 
+                                      isChecked={isSelected}
+                                      colorScheme="teal"
+                                      size="lg"
+                                      onChange={() => {}}
+                                    />
+                                  </Flex>
+                                </CardBody>
+                              </Card>
+                            );
+                          })}
+                        </VStack>
+                      </TabPanel>
+                    </TabPanels>
+                  </Tabs>
+                )}
+              </CardBody>
+            </Card>
+          </Box>
+          
+          {/* Right Column - Summary */}
+          <Box>
+            <Card position="sticky" top="20px">
+              <CardHeader pb={0}>
+                <Heading size="md">Your Selection</Heading>
+              </CardHeader>
+              <CardBody>
+                <Stat mb={4}>
+                  <StatLabel>Selected Equipment</StatLabel>
+                  <StatNumber>{selectedEquipment.length}</StatNumber>
+                  <StatHelpText>
+                    {selectedEquipment.length > 0 
+                      ? `${selectedEquipment.length} item${selectedEquipment.length > 1 ? 's' : ''} selected`
+                      : 'No equipment selected yet'}
+                  </StatHelpText>
+                </Stat>
+                
+                <Divider my={4} />
+                
+                {selectedEquipment.length > 0 ? (
+                  <>
+                    <Text fontWeight="medium" mb={2}>Selected Equipment:</Text>
+                    <VStack align="stretch" spacing={2} maxH="300px" overflowY="auto" mb={4}>
+                      {availableEquipment
+                        .filter(item => selectedEquipment.includes(item._id))
+                        .map(item => (
+                          <HStack key={item._id} justify="space-between" p={2} bg="gray.50" borderRadius="md">
+                            <Text fontWeight="medium">{item.name}</Text>
+                            <Text>${item.price || 0}</Text>
+                          </HStack>
+                        ))}
+                    </VStack>
+                    
+                    <Divider my={4} />
+                    
+                    <Flex justify="space-between" fontWeight="bold" fontSize="lg" mb={6}>
+                      <Text>Equipment Total:</Text>
+                      <Text>${calculateTotal()}</Text>
+                    </Flex>
+                  </>
+                ) : (
+                  <Alert status="info" mb={6} borderRadius="md">
+                    <AlertIcon />
+                    <Text>Equipment selection is optional</Text>
+                  </Alert>
+                )}
+                
+                <Stack spacing={4}>
+                  <Button
+                    colorScheme="teal"
+                    size="lg"
+                    width="full"
+                    rightIcon={<FiCheckCircle />}
+                    onClick={handleSubmit}
+                    isLoading={submitting}
+                  >
+                    Complete Registration
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    width="full"
+                    leftIcon={<FiChevronLeft />}
+                    onClick={() => navigate(`/exhibitor/registrations/${registrationId}/stands`)}
+                  >
+                    Back to Stands
+                  </Button>
+                </Stack>
+              </CardBody>
+            </Card>
+          </Box>
+        </SimpleGrid>
+      </Box>
+    </DashboardLayout>
+  );
+};
+
+export default SelectEquipment;
