@@ -12,24 +12,22 @@ import ExhibitorEventDetail from '../pages/Exhibitor/EventDetail';
 import ExhibitorMessages from '../pages/exhibitor/Messages';
 import ExhibitorRegistrations from '../pages/exhibitor/Registrations';
 import ExhibitorRegistrationDetail from '../pages/Exhibitor/RegistrationDetail';
-import ExhibitorSelectStands from '../pages/Exhibitor/SelectStands';
-import ExhibitorSelectEquipment from '../pages/Exhibitor/SelectEquipment';
+import RegistrationWizard from '../pages/Exhibitor/RegistrationWizard';
 import ExhibitorStands from '../pages/exhibitor/Stands';
 import ExhibitorEquipment from '../pages/exhibitor/Equipment';
 import ExhibitorInvoices from '../pages/exhibitor/Invoices';
 import ExhibitorPayments from '../pages/exhibitor/Payments';
 import ExhibitorNotifications from '../pages/exhibitor/Notifications';
 import ExhibitorSettings from '../pages/exhibitor/Settings';
-import ExhibitorConfirmRegistration from '../pages/Exhibitor/ConfirmRegistration';
 
 /**
- * Configuration des routes exposant
- * Toutes les routes sont protégées avec vérification du rôle exposant
+ * Configuration for exhibitor routes
+ * All routes are protected with exhibitor role verification
  */
 const ExhibitorRoutes = () => {
   return (
     <Routes>
-      {/* Dashboard - Page principale exposant */}
+      {/* Dashboard - Main exhibitor page */}
       <Route 
         path="dashboard" 
         element={
@@ -69,7 +67,7 @@ const ExhibitorRoutes = () => {
         } 
       />
       
-      {/* Registration Detail - Missing route that's causing the 404 */}
+      {/* Registration Detail */}
       <Route 
         path="registrations/:registrationId" 
         element={
@@ -79,22 +77,12 @@ const ExhibitorRoutes = () => {
         } 
       />
       
-      {/* Select Stands - Missing route for stand selection */}
+      {/* Registration Wizard - Unified selection process */}
       <Route 
-        path="registrations/:registrationId/stands" 
+        path="registrations/:registrationId/selection" 
         element={
           <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
-            <ExhibitorSelectStands />
-          </ProtectedRoute>
-        } 
-      />
-      
-      {/* Select Equipment - Missing route for equipment selection */}
-      <Route 
-        path="registrations/:registrationId/equipment" 
-        element={
-          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
-            <ExhibitorSelectEquipment />
+            <RegistrationWizard />
           </ProtectedRoute>
         } 
       />
@@ -168,24 +156,14 @@ const ExhibitorRoutes = () => {
           </ProtectedRoute>
         } 
       />
-
-      {/* Confirm Registration - New route for the confirmation step */}
-      <Route 
-        path="registrations/:registrationId/confirm" 
-        element={
-          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
-            <ExhibitorConfirmRegistration />
-          </ProtectedRoute>
-        } 
-      />
       
-      {/* Redirection du / vers dashboard */}
+      {/* Redirect root to dashboard */}
       <Route 
         path="/" 
         element={<Navigate to="dashboard" replace />} 
       />
       
-      {/* Not Found - Gestion des 404 pour les routes exposant */}
+      {/* Not Found - 404 handler for exhibitor routes */}
       <Route 
         path="*" 
         element={
@@ -195,8 +173,6 @@ const ExhibitorRoutes = () => {
         } 
       />
     </Routes>
-
-    
   );
 };
 

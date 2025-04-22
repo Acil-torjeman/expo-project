@@ -1,4 +1,4 @@
-// src/pages/exhibitor/RegistrationDetail.jsx
+// src/pages/Exhibitor/RegistrationDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -99,7 +99,8 @@ const RegistrationDetail = () => {
   };
   
   const handleProceedToSelection = () => {
-    navigate(`/exhibitor/registrations/${registrationId}/stands`);
+    // Updated to use the unified selection wizard
+    navigate(`/exhibitor/registrations/${registrationId}/selection`);
   };
   
   const handleCancelRegistration = async () => {
@@ -335,25 +336,13 @@ const RegistrationDetail = () => {
                 </Alert>
               )}
               
-              {status === 'approved' && !registration.standSelectionCompleted && (
+              {status === 'approved' && (
                 <Alert status="success" borderRadius="md" mb={4}>
                   <AlertIcon />
                   <Box>
                     <AlertTitle>Registration Approved</AlertTitle>
                     <Text fontSize="sm">
                       Please proceed to select your stands and equipment.
-                    </Text>
-                  </Box>
-                </Alert>
-              )}
-              
-              {status === 'approved' && registration.standSelectionCompleted && !registration.equipmentSelectionCompleted && (
-                <Alert status="success" borderRadius="md" mb={4}>
-                  <AlertIcon />
-                  <Box>
-                    <AlertTitle>Stands Selected</AlertTitle>
-                    <Text fontSize="sm">
-                      You have selected your stands. Please proceed to select your equipment.
                     </Text>
                   </Box>
                 </Alert>
@@ -395,25 +384,14 @@ const RegistrationDetail = () => {
               
               {/* Action Buttons */}
               <Box mt={6}>
-                {status === 'approved' && !registration.standSelectionCompleted && (
+                {status === 'approved' && (
                   <Button 
                     colorScheme="teal" 
                     width="full" 
                     rightIcon={<FiChevronRight />}
                     onClick={handleProceedToSelection}
                   >
-                    Proceed to Select Stands
-                  </Button>
-                )}
-                
-                {status === 'approved' && registration.standSelectionCompleted && !registration.equipmentSelectionCompleted && (
-                  <Button 
-                    colorScheme="teal" 
-                    width="full" 
-                    rightIcon={<FiChevronRight />}
-                    onClick={() => navigate(`/exhibitor/registrations/${registrationId}/equipment`)}
-                  >
-                    Proceed to Select Equipment
+                    Proceed to Selection
                   </Button>
                 )}
                 
@@ -481,9 +459,9 @@ const RegistrationDetail = () => {
                   mt={4} 
                   colorScheme="teal" 
                   variant="outline"
-                  onClick={() => navigate(`/exhibitor/registrations/${registrationId}/stands`)}
+                  onClick={handleProceedToSelection}
                 >
-                  Modify Stand Selection
+                  Modify Selections
                 </Button>
               )}
             </CardBody>
@@ -521,9 +499,9 @@ const RegistrationDetail = () => {
                   mt={4} 
                   colorScheme="teal" 
                   variant="outline"
-                  onClick={() => navigate(`/exhibitor/registrations/${registrationId}/equipment`)}
+                  onClick={handleProceedToSelection}
                 >
-                  Modify Equipment Selection
+                  Modify Selections
                 </Button>
               )}
             </CardBody>
