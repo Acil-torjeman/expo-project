@@ -59,6 +59,21 @@ class ExhibitorService {
   }
 
   /**
+ * Complete registration process
+ * @param {string} id - Registration ID
+ * @returns {Promise<Object>} Completed registration
+ */
+async completeRegistration(id) {
+  try {
+    const response = await api.post(`/registrations/${id}/complete`);
+    return response.data;
+  } catch (error) {
+    this._handleError(error, 'Failed to complete registration');
+    throw error;
+  }
+}
+
+  /**
    * Get exhibitors by event ID
    * @param {string} eventId - Event ID
    * @returns {Promise<Array>} List of exhibitors

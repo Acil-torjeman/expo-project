@@ -114,25 +114,20 @@ const SelectStands = () => {
           return;
         }
         
-        const standsData = await eventService.getAvailableStands(eventId);
-        console.log("Available stands returned:", standsData);
+        // Important: Get ALL stands for the event, not just available ones
+        const standsData = await eventService.getStands(eventId);
+        console.log("All stands returned:", standsData);
         
-        // Combine available stands with already selected stands
-        const allStands = [...standsData];
+        // Filter stands: Show either available stands OR stands already selected by user
+        const userSelectedStandIds = registrationData.stands?.map(stand => 
+          typeof stand === 'object' ? stand._id : stand
+        ) || [];
         
-        // If there are already selected stands, add them to the available stands
-        if (registrationData.stands && registrationData.stands.length > 0) {
-          // Filter out any stands that are already in the available stands list
-          const selectedStandsNotInAvailable = registrationData.stands.filter(
-            selected => !standsData.some(available => available._id === selected._id)
-          );
-          
-          console.log("Adding previously selected stands:", selectedStandsNotInAvailable);
-          
-          allStands.push(...selectedStandsNotInAvailable);
-        }
+        const availableOrSelectedStands = standsData.filter(stand => 
+          stand.status === 'available' || userSelectedStandIds.includes(stand._id)
+        );
         
-        setAvailableStands(allStands);
+        setAvailableStands(availableOrSelectedStands);
       } else {
         setError("Registration doesn't have a valid event associated with it.");
       }
@@ -206,7 +201,7 @@ const SelectStands = () => {
     try {
       await registrationService.selectStands(registrationId, {
         standIds: selectedStands,
-        selectionCompleted: true
+        selectionCompleted: true  // Keep this as true since stand selection is required
       });
       
       toast({
@@ -217,7 +212,7 @@ const SelectStands = () => {
         isClosable: true,
       });
       
-      // Navigate to equipment selection
+      // Always navigate to equipment selection next
       navigate(`/exhibitor/registrations/${registrationId}/equipment`);
     } catch (error) {
       toast({
@@ -623,17 +618,17 @@ const SelectStands = () => {
                 )}
                 
                 <Stack spacing={4}>
-                  <Button
-                    colorScheme="teal"
-                    size="lg"
-                    width="full"
-                    rightIcon={<FiChevronRight />}
-                    onClick={handleSubmit}
-                    isLoading={submitting}
-                    isDisabled={selectedStands.length === 0}
-                  >
-                    Continue to Equipment
-                  </Button>
+                <Button
+                  colorScheme="teal"
+                  size="lg"
+                  width="full"
+                  rightIcon={<FiChevronRight />}
+                  onClick={handleSubmit}
+                  isLoading={submitting}
+                  isDisabled={selectedStands.length === 0}
+                >
+                  Next: Select Equipment
+                </Button>
                   
                   <Button
                     variant="outline"

@@ -90,6 +90,48 @@ class StandService {
     }
   }
 
+  /**
+ * Reserve a stand for a registration
+ */
+async reserveStand(id, registrationId) {
+  this.logger.log(`Reserving stand ${id} for registration ${registrationId}`);
+  
+  // Get the stand
+  const stand = await this.findOne(id);
+  
+  // Check if stand is available or already reserved for this registration
+  // This is the important change - we allow the stand to be reserved again if it's for the same registration
+  const isReservedByThisRegistration = stand.reservation && 
+    String(stand.reservation) === String(registrationId);
+    
+  if (stand.status !== 'available' && !isReservedByThisRegistration) {
+    throw new BadRequestException(`Stand with ID ${id} is not available`);
+  }
+  
+  // Only update if the stand isn't already reserved for this registration
+  if (!isReservedByThisRegistration) {
+    // Update the stand status
+    const updatedStand = await this.standModel.findByIdAndUpdate(
+      id,
+      { 
+        status: 'reserved',
+        reservation: new Types.ObjectId(registrationId)
+      },
+      { new: true }
+    )
+    .populate('plan')
+    .exec();
+    
+    if (!updatedStand) {
+      throw new NotFoundException(`Stand with ID ${id} not found`);
+    }
+    
+    return updatedStand;
+  }
+  
+  // If it's already reserved for this registration, just return the stand
+  return stand;
+}
   // Update stand status
   async updateStandStatus(id, status, reason = '') {
     try {

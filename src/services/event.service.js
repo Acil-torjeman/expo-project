@@ -125,6 +125,21 @@ class EventService {
   }
 
   /**
+ * Get all stands for an event
+ * @param {string} eventId - Event ID
+ * @returns {Promise<Array>} List of stands
+ */
+async getStands(eventId) {
+  try {
+    const response = await api.get(`/events/${eventId}/stands`);
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to fetch stands for event ${eventId}:`, error.message);
+    throw error;
+  }
+}
+
+  /**
    * Associate plan with event
    */
   async associatePlan(eventId, planId) {

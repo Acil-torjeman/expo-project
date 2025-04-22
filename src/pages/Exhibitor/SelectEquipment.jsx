@@ -95,22 +95,11 @@ const SelectEquipment = () => {
         const eventId = typeof registrationData.event === 'object' ? 
           registrationData.event._id : registrationData.event;
         
+        // Get all equipment for the event
         const equipmentData = await equipmentService.getEventEquipment(eventId);
         
-        // Combine available equipment with already selected equipment
-        const allEquipment = [...equipmentData];
-        
-        // If there are already selected equipment, add them to the available equipment
-        if (registrationData.equipment && registrationData.equipment.length > 0) {
-          // Filter out any equipment that are already in the available equipment list
-          const selectedEquipmentNotInAvailable = registrationData.equipment.filter(
-            selected => !equipmentData.some(available => available._id === selected._id)
-          );
-          
-          allEquipment.push(...selectedEquipmentNotInAvailable);
-        }
-        
-        setAvailableEquipment(allEquipment);
+        // No need to filter equipment since all equipment can be selected by multiple exhibitors
+        setAvailableEquipment(equipmentData);
       }
     } catch (error) {
       toast({
@@ -169,7 +158,7 @@ const SelectEquipment = () => {
     try {
       await registrationService.selectEquipment(registrationId, {
         equipmentIds: selectedEquipment,
-        selectionCompleted: true
+        selectionCompleted: false  // Changed to false as we're going to confirmation now
       });
       
       toast({
@@ -180,8 +169,8 @@ const SelectEquipment = () => {
         isClosable: true,
       });
       
-      // Navigate back to registration details
-      navigate(`/exhibitor/registrations/${registrationId}`);
+      // Navigate to confirmation page instead of registration details
+      navigate(`/exhibitor/registrations/${registrationId}/confirm`);
     } catch (error) {
       toast({
         title: 'Error',
@@ -505,15 +494,15 @@ const SelectEquipment = () => {
                 )}
                 
                 <Stack spacing={4}>
-                  <Button
+                <Button
                     colorScheme="teal"
                     size="lg"
                     width="full"
-                    rightIcon={<FiCheckCircle />}
+                    rightIcon={<FiChevronRight />}
                     onClick={handleSubmit}
                     isLoading={submitting}
                   >
-                    Complete Registration
+                    Next: Review & Confirm
                   </Button>
                   
                   <Button

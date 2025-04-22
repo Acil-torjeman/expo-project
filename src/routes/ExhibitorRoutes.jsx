@@ -20,6 +20,7 @@ import ExhibitorInvoices from '../pages/exhibitor/Invoices';
 import ExhibitorPayments from '../pages/exhibitor/Payments';
 import ExhibitorNotifications from '../pages/exhibitor/Notifications';
 import ExhibitorSettings from '../pages/exhibitor/Settings';
+import ExhibitorConfirmRegistration from '../pages/Exhibitor/ConfirmRegistration';
 
 /**
  * Configuration des routes exposant
@@ -167,6 +168,16 @@ const ExhibitorRoutes = () => {
           </ProtectedRoute>
         } 
       />
+
+      {/* Confirm Registration - New route for the confirmation step */}
+      <Route 
+        path="registrations/:registrationId/confirm" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <ExhibitorConfirmRegistration />
+          </ProtectedRoute>
+        } 
+      />
       
       {/* Redirection du / vers dashboard */}
       <Route 
@@ -184,6 +195,8 @@ const ExhibitorRoutes = () => {
         } 
       />
     </Routes>
+
+    
   );
 };
 
