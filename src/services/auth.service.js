@@ -158,7 +158,7 @@ export const authService = {
       }
       
       // Send refresh request
-      const response = await axios.post(`${API_BASE_URL}/refresh`, {
+      const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
         userId: userId,
         refreshToken: refreshToken,
       });
@@ -219,7 +219,7 @@ export const authService = {
         }
       }
     } finally {
-      // Always clear local storage
+      //clear local storage
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
