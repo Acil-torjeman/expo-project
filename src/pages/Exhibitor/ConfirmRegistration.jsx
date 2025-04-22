@@ -5,7 +5,8 @@ import {
   Box, Button, Flex, Heading, Text, SimpleGrid, Card, CardBody, CardHeader,
   HStack, VStack, Divider, Badge, useToast, Spinner, Alert, AlertIcon,
   AlertTitle, Icon, Breadcrumb, BreadcrumbItem, BreadcrumbLink, Stack,
-  Stat, StatLabel, StatNumber, StatHelpText
+  Stat, StatLabel, StatNumber, StatHelpText, Modal, ModalOverlay, 
+  ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure
 } from '@chakra-ui/react';
 import {
   FiChevronRight, FiChevronLeft, FiCheckCircle, FiDollarSign, FiInfo,
@@ -13,6 +14,7 @@ import {
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import registrationService from '../../services/registration.service';
+import eventService from '../../services/event.service';
 
 const ConfirmRegistration = () => {
   const { registrationId } = useParams();
@@ -24,6 +26,17 @@ const ConfirmRegistration = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   
+  // Selected stands and equipment from session storage
+  const [selectedStands, setSelectedStands] = useState([]);
+  const [selectedEquipment, setSelectedEquipment] = useState([]);
+  
+  // For selected items details
+  const [standsDetails, setStandsDetails] = useState([]);
+  const [equipmentDetails, setEquipmentDetails] = useState([]);
+  
+  // For confirmation modal
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  
   useEffect(() => {
     fetchRegistrationDetails();
   }, [registrationId]);
@@ -31,8 +44,35 @@ const ConfirmRegistration = () => {
   const fetchRegistrationDetails = async () => {
     setLoading(true);
     try {
-      const data = await registrationService.getRegistrationById(registrationId);
-      setRegistration(data);
+      // First load registration details
+      const registrationData = await registrationService.getRegistrationById(registrationId);
+      setRegistration(registrationData);
+      
+      // Load saved selections from session storage
+      loadSelectionsFromStorage();
+      
+      // Check if stands were selected
+      const savedStands = JSON.parse(sessionStorage.getItem(`standSelection_${registrationId}`) || '[]');
+      if (!savedStands.length) {
+        setError("You need to select stands before confirming your registration");
+      }
+      
+      // If event not available in registration, get it
+      if (!registrationData.event || typeof registrationData.event === 'string') {
+        try {
+          const eventId = typeof registrationData.event === 'object' 
+            ? registrationData.event._id 
+            : registrationData.event;
+          
+          const eventDetails = await eventService.getEventById(eventId);
+          registrationData.event = eventDetails;
+        } catch (eventError) {
+          console.error("Error fetching event details:", eventError);
+        }
+      }
+      
+      // Get details for stands and equipment
+      await fetchItemDetails(registrationData);
     } catch (error) {
       setError(error.message || 'Failed to load registration details');
       toast({
@@ -47,11 +87,113 @@ const ConfirmRegistration = () => {
     }
   };
   
+  const loadSelectionsFromStorage = () => {
+    try {
+      // Load stand selection
+      const standsData = sessionStorage.getItem(`standSelection_${registrationId}`);
+      if (standsData) {
+        const parsedStands = JSON.parse(standsData);
+        if (Array.isArray(parsedStands)) {
+          setSelectedStands(parsedStands);
+        }
+      }
+      
+      // Load equipment selection
+      const equipmentData = sessionStorage.getItem(`equipmentSelection_${registrationId}`);
+      if (equipmentData) {
+        const parsedEquipment = JSON.parse(equipmentData);
+        if (Array.isArray(parsedEquipment)) {
+          setSelectedEquipment(parsedEquipment);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading saved selections:", e);
+    }
+  };
+  
+  const fetchItemDetails = async (registrationData) => {
+    try {
+      // Get details for stands
+      if (selectedStands.length > 0) {
+        const eventId = typeof registrationData.event === 'object' 
+          ? registrationData.event._id 
+          : registrationData.event;
+        
+        const allStands = await eventService.getStands(eventId);
+        const selectedStandsDetails = allStands.filter(stand => 
+          selectedStands.includes(stand._id)
+        );
+        setStandsDetails(selectedStandsDetails);
+      } else if (registrationData.stands && registrationData.stands.length > 0) {
+        // Use stands from registration if available
+        setStandsDetails(registrationData.stands);
+        setSelectedStands(registrationData.stands.map(stand => 
+          typeof stand === 'object' ? stand._id : stand
+        ));
+      }
+      
+      // Get details for equipment
+      if (selectedEquipment.length > 0) {
+        if (registrationData.event) {
+          const eventId = typeof registrationData.event === 'object' 
+            ? registrationData.event._id 
+            : registrationData.event;
+          
+          const allEquipment = await eventService.getEventEquipment(eventId);
+          const selectedEquipmentDetails = allEquipment.filter(item => 
+            selectedEquipment.includes(item._id)
+          );
+          setEquipmentDetails(selectedEquipmentDetails);
+        }
+      } else if (registrationData.equipment && registrationData.equipment.length > 0) {
+        // Use equipment from registration if available
+        setEquipmentDetails(registrationData.equipment);
+        setSelectedEquipment(registrationData.equipment.map(item => 
+          typeof item === 'object' ? item._id : item
+        ));
+      }
+    } catch (error) {
+      console.error("Error fetching item details:", error);
+      toast({
+        title: 'Warning',
+        description: 'Some details could not be loaded. You can still proceed with confirmation.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+  
   const handleConfirm = async () => {
+    // Show confirmation modal
+    onOpen();
+  };
+  
+  const executeConfirmation = async () => {
     setSubmitting(true);
     try {
-      // Update registration status to completed
+      // First, save the stand selection if needed
+      if (selectedStands.length > 0) {
+        await registrationService.selectStands(registrationId, {
+          standIds: selectedStands,
+          selectionCompleted: true
+        });
+      }
+      
+      // Then save equipment selection if needed
+      if (selectedEquipment.length > 0) {
+        await registrationService.selectEquipment(registrationId, {
+          equipmentIds: selectedEquipment,
+          selectionCompleted: true
+        });
+      }
+      
+      // Finally, complete the registration
       await registrationService.completeRegistration(registrationId);
+      
+      // Clear the temporary storage
+      sessionStorage.removeItem(`standSelection_${registrationId}`);
+      sessionStorage.removeItem(`equipmentSelection_${registrationId}`);
       
       toast({
         title: 'Registration Completed',
@@ -73,17 +215,16 @@ const ConfirmRegistration = () => {
       });
     } finally {
       setSubmitting(false);
+      onClose();
     }
   };
   
   const calculateStandsTotal = () => {
-    if (!registration || !registration.stands) return 0;
-    return registration.stands.reduce((total, stand) => total + (stand.basePrice || 0), 0);
+    return standsDetails.reduce((total, stand) => total + (stand.basePrice || 0), 0);
   };
   
   const calculateEquipmentTotal = () => {
-    if (!registration || !registration.equipment) return 0;
-    return registration.equipment.reduce((total, item) => total + (item.price || 0), 0);
+    return equipmentDetails.reduce((total, item) => total + (item.price || 0), 0);
   };
   
   const calculateTotal = () => {
@@ -139,9 +280,9 @@ const ConfirmRegistration = () => {
           <Button 
             mt={6} 
             leftIcon={<FiChevronLeft />}
-            onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}
+            onClick={() => navigate(`/exhibitor/registrations/${registrationId}/stands`)}
           >
-            Back to Registration
+            Go to Stand Selection
           </Button>
         </Box>
       </DashboardLayout>
@@ -169,8 +310,8 @@ const ConfirmRegistration = () => {
   }
   
   const event = registration.event || {};
-  const hasStands = registration.stands && registration.stands.length > 0;
-  const hasEquipment = registration.equipment && registration.equipment.length > 0;
+  const hasStands = selectedStands.length > 0;
+  const hasEquipment = selectedEquipment.length > 0;
   
   return (
     <DashboardLayout>
@@ -242,7 +383,7 @@ const ConfirmRegistration = () => {
                 {hasStands ? (
                   <>
                     <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mb={4}>
-                      {registration.stands.map(stand => (
+                      {standsDetails.map(stand => (
                         <Card key={stand._id} variant="outline">
                           <CardBody>
                             <Heading size="sm" mb={2}>Stand #{stand.number}</Heading>
@@ -305,7 +446,7 @@ const ConfirmRegistration = () => {
                 {hasEquipment ? (
                   <>
                     <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mb={4}>
-                      {registration.equipment.map(item => (
+                      {equipmentDetails.map(item => (
                         <Card key={item._id} variant="outline">
                           <CardBody>
                             <Heading size="sm" mb={2}>{item.name}</Heading>
@@ -367,7 +508,7 @@ const ConfirmRegistration = () => {
                     <StatLabel>Stands Total</StatLabel>
                     <StatNumber>${calculateStandsTotal()}</StatNumber>
                     <StatHelpText>
-                      {registration.stands?.length || 0} stand(s) selected
+                      {standsDetails.length || 0} stand(s) selected
                     </StatHelpText>
                   </Stat>
                   
@@ -375,7 +516,7 @@ const ConfirmRegistration = () => {
                     <StatLabel>Equipment Total</StatLabel>
                     <StatNumber>${calculateEquipmentTotal()}</StatNumber>
                     <StatHelpText>
-                      {registration.equipment?.length || 0} item(s) selected
+                      {equipmentDetails.length || 0} item(s) selected
                     </StatHelpText>
                   </Stat>
                   
@@ -432,6 +573,44 @@ const ConfirmRegistration = () => {
           </Box>
         </SimpleGrid>
       </Box>
+      
+      {/* Confirmation Modal */}
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Confirm Registration</ModalHeader>
+          <ModalBody>
+            <Alert status="info" borderRadius="md" mb={4}>
+              <AlertIcon />
+              <Box>
+                <AlertTitle>Final Confirmation</AlertTitle>
+                <Text mt={2}>
+                  You are about to confirm your registration with {standsDetails.length} stand(s)
+                  {hasEquipment ? ` and ${equipmentDetails.length} equipment item(s)` : ''}.
+                </Text>
+                <Text mt={2}>
+                  Total amount: <Text as="span" fontWeight="bold">${calculateTotal()}</Text>
+                </Text>
+                <Text mt={2}>
+                  This action will complete your registration and cannot be undone. Are you sure you want to proceed?
+                </Text>
+              </Box>
+            </Alert>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onClose}>
+              Cancel
+            </Button>
+            <Button 
+              colorScheme="teal" 
+              onClick={executeConfirmation}
+              isLoading={submitting}
+            >
+              Yes, Confirm Registration
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </DashboardLayout>
   );
 };

@@ -230,6 +230,21 @@ class RegistrationService {
   }
 
   /**
+   * Complete the registration process with selected stands and equipment
+   * @param {string} id - Registration ID
+   * @returns {Promise<Object>} Completed registration
+   */
+  async completeRegistration(id) {
+    try {
+      const response = await api.post(`/registrations/${id}/complete`);
+      return response.data;
+    } catch (error) {
+      this._handleError(error, 'Failed to complete registration');
+      throw error;
+    }
+  }
+
+  /**
    * Cancel a registration
    * @param {string} id - Registration ID
    * @returns {Promise<Object>} Cancelled registration

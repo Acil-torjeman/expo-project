@@ -2,57 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Box,
-  Button,
-  Flex,
-  Heading,
-  Text,
-  SimpleGrid,
-  Card,
-  CardBody,
-  CardHeader,
-  HStack,
-  VStack,
-  Checkbox,
-  Divider,
-  Badge,
-  useToast,
-  Spinner,
-  Alert,
-  AlertIcon,
-  AlertTitle,
-  Icon,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  Stack,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  TabPanel,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  Link,
-  Tooltip,
+  Box, Button, Flex, Heading, Text, SimpleGrid, Card, CardBody, CardHeader,
+  HStack, VStack, Checkbox, Divider, Badge, useToast, Spinner, Alert, AlertIcon,
+  AlertTitle, Icon, Breadcrumb, BreadcrumbItem, BreadcrumbLink, Stat, StatLabel,
+  StatNumber, StatHelpText, Stack, Input, InputGroup, InputLeftElement, TabPanel,
+  Tabs, TabList, Tab, TabPanels, Link, Tooltip, useDisclosure, Modal, ModalOverlay,
+  ModalContent, ModalHeader, ModalBody, ModalFooter
 } from '@chakra-ui/react';
 import {
-  FiChevronRight,
-  FiChevronLeft,
-  FiSearch,
-  FiDownload,
-  FiInfo,
-  FiCheckCircle,
-  FiDollarSign,
-  FiGrid,
-  FiFilter,
-  FiSquare,
-  FiAlertTriangle,
+  FiChevronRight, FiChevronLeft, FiSearch, FiDownload, FiInfo, FiCheckCircle,
+  FiDollarSign, FiGrid, FiFilter, FiSquare, FiAlertTriangle
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import registrationService from '../../services/registration.service';
@@ -74,6 +33,10 @@ const SelectStands = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [error, setError] = useState(null);
   
+  // For navigation confirmation modal
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [navigationTarget, setNavigationTarget] = useState(null);
+  
   useEffect(() => {
     fetchRegistrationAndStands();
   }, [registrationId]);
@@ -88,12 +51,10 @@ const SelectStands = () => {
     try {
       // Fetch registration details
       const registrationData = await registrationService.getRegistrationById(registrationId);
-      console.log("Registration data:", registrationData);
       setRegistration(registrationData);
       
       // Set any already selected stands
       if (registrationData.stands && registrationData.stands.length > 0) {
-        console.log("Already selected stands:", registrationData.stands);
         setSelectedStands(registrationData.stands.map(stand => stand._id));
       }
       
@@ -102,11 +63,8 @@ const SelectStands = () => {
         const eventId = typeof registrationData.event === 'object' ? 
           registrationData.event._id : registrationData.event;
         
-        console.log("Getting stands for event:", eventId);
-        
         // Get event details first to ensure we have plan information
         const eventDetails = await eventService.getEventById(eventId);
-        console.log("Event details:", eventDetails);
         
         if (!eventDetails.plan) {
           setError("This event doesn't have a floor plan assigned yet. Please contact the organizer.");
@@ -116,7 +74,6 @@ const SelectStands = () => {
         
         // Important: Get ALL stands for the event, not just available ones
         const standsData = await eventService.getStands(eventId);
-        console.log("All stands returned:", standsData);
         
         // Filter stands: Show either available stands OR stands already selected by user
         const userSelectedStandIds = registrationData.stands?.map(stand => 
@@ -185,6 +142,30 @@ const SelectStands = () => {
     setTypeFilter(prev => prev === type ? '' : type);
   };
   
+  // Temporary storage in sessionStorage to persist selection between pages
+  const saveTemporaryStandSelection = () => {
+    sessionStorage.setItem(`standSelection_${registrationId}`, JSON.stringify(selectedStands));
+  };
+  
+  const loadTemporaryStandSelection = () => {
+    const savedSelection = sessionStorage.getItem(`standSelection_${registrationId}`);
+    if (savedSelection) {
+      try {
+        const parsedSelection = JSON.parse(savedSelection);
+        if (Array.isArray(parsedSelection)) {
+          setSelectedStands(parsedSelection);
+        }
+      } catch (e) {
+        console.error("Error loading saved stand selection:", e);
+      }
+    }
+  };
+  
+  // Try to load from session storage on first render
+  useEffect(() => {
+    loadTemporaryStandSelection();
+  }, []);
+  
   const handleSubmit = async () => {
     if (selectedStands.length === 0) {
       toast({
@@ -197,33 +178,31 @@ const SelectStands = () => {
       return;
     }
     
-    setSubmitting(true);
-    try {
-      await registrationService.selectStands(registrationId, {
-        standIds: selectedStands,
-        selectionCompleted: true  // Keep this as true since stand selection is required
-      });
-      
-      toast({
-        title: 'Stands Selected',
-        description: 'Your stand selection has been saved successfully',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-      
-      // Always navigate to equipment selection next
-      navigate(`/exhibitor/registrations/${registrationId}/equipment`);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to save stand selection',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setSubmitting(false);
+    // Save the selection to session storage
+    saveTemporaryStandSelection();
+    
+    // Navigate to equipment selection
+    navigate(`/exhibitor/registrations/${registrationId}/equipment`);
+  };
+  
+  // Handler for navigation with confirmation
+  const handleNavigation = (target) => {
+    // If no stands selected or already saved, navigate directly
+    if (selectedStands.length === 0) {
+      navigate(target);
+      return;
+    }
+    
+    // Otherwise open confirmation dialog
+    setNavigationTarget(target);
+    onOpen();
+  };
+  
+  // Confirm navigation and lose changes
+  const confirmNavigation = () => {
+    onClose();
+    if (navigationTarget) {
+      navigate(navigationTarget);
     }
   };
   
@@ -278,7 +257,7 @@ const SelectStands = () => {
           <Button 
             mt={6} 
             leftIcon={<FiChevronLeft />}
-            onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}
+            onClick={() => handleNavigation(`/exhibitor/registrations/${registrationId}`)}
           >
             Back to Registration
           </Button>
@@ -322,7 +301,7 @@ const SelectStands = () => {
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}>
+            <BreadcrumbLink onClick={() => handleNavigation(`/exhibitor/registrations/${registrationId}`)}>
               Registration Details
             </BreadcrumbLink>
           </BreadcrumbItem>
@@ -618,23 +597,23 @@ const SelectStands = () => {
                 )}
                 
                 <Stack spacing={4}>
-                <Button
-                  colorScheme="teal"
-                  size="lg"
-                  width="full"
-                  rightIcon={<FiChevronRight />}
-                  onClick={handleSubmit}
-                  isLoading={submitting}
-                  isDisabled={selectedStands.length === 0}
-                >
-                  Next: Select Equipment
-                </Button>
+                  <Button
+                    colorScheme="teal"
+                    size="lg"
+                    width="full"
+                    rightIcon={<FiChevronRight />}
+                    onClick={handleSubmit}
+                    isLoading={submitting}
+                    isDisabled={selectedStands.length === 0}
+                  >
+                    Next: Select Equipment
+                  </Button>
                   
                   <Button
                     variant="outline"
                     width="full"
                     leftIcon={<FiChevronLeft />}
-                    onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}
+                    onClick={() => handleNavigation(`/exhibitor/registrations/${registrationId}`)}
                   >
                     Back to Registration
                   </Button>
@@ -644,6 +623,33 @@ const SelectStands = () => {
           </Box>
         </SimpleGrid>
       </Box>
+      
+      {/* Navigation Confirmation Modal */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Unsaved Changes</ModalHeader>
+          <ModalBody>
+            <Alert status="warning">
+              <AlertIcon />
+              <Box>
+                <AlertTitle>You have unsaved stand selections</AlertTitle>
+                <Text mt={2}>
+                  If you navigate away now, your stand selections will not be saved. Are you sure you want to continue?
+                </Text>
+              </Box>
+            </Alert>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="gray" mr={3} onClick={onClose}>
+              Cancel
+            </Button>
+            <Button colorScheme="red" onClick={confirmNavigation}>
+              Discard Selections
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </DashboardLayout>
   );
 };

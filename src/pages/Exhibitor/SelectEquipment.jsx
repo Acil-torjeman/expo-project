@@ -1,54 +1,17 @@
-// src/pages/exhibitor/SelectEquipment.jsx
+// src/pages/Exhibitor/SelectEquipment.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Box,
-  Button,
-  Flex,
-  Heading,
-  Text,
-  SimpleGrid,
-  Card,
-  CardBody,
-  CardHeader,
-  HStack,
-  VStack,
-  Checkbox,
-  Divider,
-  Badge,
-  useToast,
-  Spinner,
-  Alert,
-  AlertIcon,
-  AlertTitle,
-  Icon,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  Stack,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  Image,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
+  Box, Button, Flex, Heading, Text, SimpleGrid, Card, CardBody, CardHeader,
+  HStack, VStack, Checkbox, Divider, Badge, useToast, Spinner, Alert, AlertIcon,
+  AlertTitle, Icon, Breadcrumb, BreadcrumbItem, BreadcrumbLink, Stat, StatLabel,
+  StatNumber, StatHelpText, Stack, Input, InputGroup, InputLeftElement, Image,
+  Tabs, TabList, Tab, TabPanels, TabPanel, Modal, ModalOverlay, ModalContent,
+  ModalHeader, ModalBody, ModalFooter, useDisclosure
 } from '@chakra-ui/react';
 import {
-  FiChevronRight,
-  FiChevronLeft,
-  FiSearch,
-  FiInfo,
-  FiCheckCircle,
-  FiFilter,
-  FiPackage,
-  FiDatabase,
+  FiChevronRight, FiChevronLeft, FiSearch, FiInfo, FiCheckCircle, FiFilter,
+  FiPackage, FiAlertTriangle
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import registrationService from '../../services/registration.service';
@@ -69,6 +32,11 @@ const SelectEquipment = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  // For navigation confirmation modal
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [navigationTarget, setNavigationTarget] = useState(null);
   
   useEffect(() => {
     fetchRegistrationAndEquipment();
@@ -77,6 +45,11 @@ const SelectEquipment = () => {
   useEffect(() => {
     filterEquipment();
   }, [availableEquipment, searchQuery, typeFilter]);
+
+  // Try to load from session storage on first render
+  useEffect(() => {
+    loadTemporaryEquipmentSelection();
+  }, []);
   
   const fetchRegistrationAndEquipment = async () => {
     setLoading(true);
@@ -88,6 +61,13 @@ const SelectEquipment = () => {
       // Set any already selected equipment
       if (registrationData.equipment && registrationData.equipment.length > 0) {
         setSelectedEquipment(registrationData.equipment.map(item => item._id));
+      }
+      
+      // Check if stands are selected first
+      if (!registrationData.stands || registrationData.stands.length === 0) {
+        setError("You must select stands before selecting equipment. Please go back and select stands first.");
+        setLoading(false);
+        return;
       }
       
       // Fetch available equipment for the event
@@ -153,34 +133,54 @@ const SelectEquipment = () => {
     setTypeFilter(prev => prev === type ? '' : type);
   };
   
+  // Temporary storage in sessionStorage to persist selection between pages
+  const saveTemporaryEquipmentSelection = () => {
+    sessionStorage.setItem(`equipmentSelection_${registrationId}`, JSON.stringify(selectedEquipment));
+  };
+  
+  const loadTemporaryEquipmentSelection = () => {
+    const savedSelection = sessionStorage.getItem(`equipmentSelection_${registrationId}`);
+    if (savedSelection) {
+      try {
+        const parsedSelection = JSON.parse(savedSelection);
+        if (Array.isArray(parsedSelection)) {
+          setSelectedEquipment(parsedSelection);
+        }
+      } catch (e) {
+        console.error("Error loading saved equipment selection:", e);
+      }
+    }
+  };
+  
   const handleSubmit = async () => {
-    setSubmitting(true);
-    try {
-      await registrationService.selectEquipment(registrationId, {
-        equipmentIds: selectedEquipment,
-        selectionCompleted: false  // Changed to false as we're going to confirmation now
-      });
-      
-      toast({
-        title: 'Equipment Selected',
-        description: 'Your equipment selection has been saved successfully',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-      
-      // Navigate to confirmation page instead of registration details
-      navigate(`/exhibitor/registrations/${registrationId}/confirm`);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to save equipment selection',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setSubmitting(false);
+    // Save the selection to session storage
+    saveTemporaryEquipmentSelection();
+    
+    // Also save stand selection from the previous page if available
+    const savedStandSelection = sessionStorage.getItem(`standSelection_${registrationId}`);
+    
+    // Navigate to confirmation page
+    navigate(`/exhibitor/registrations/${registrationId}/confirm`);
+  };
+  
+  // Handler for navigation with confirmation
+  const handleNavigation = (target) => {
+    // If no equipment selected or already saved, navigate directly
+    if (selectedEquipment.length === 0) {
+      navigate(target);
+      return;
+    }
+    
+    // Otherwise open confirmation dialog
+    setNavigationTarget(target);
+    onOpen();
+  };
+  
+  // Confirm navigation and lose changes
+  const confirmNavigation = () => {
+    onClose();
+    if (navigationTarget) {
+      navigate(navigationTarget);
     }
   };
   
@@ -206,17 +206,56 @@ const SelectEquipment = () => {
     );
   }
   
-  if (!registration || registration.status !== 'approved' || !registration.standSelectionCompleted) {
+  if (error) {
+    return (
+      <DashboardLayout>
+        <Box p={6}>
+          <Breadcrumb separator={<Icon as={FiChevronRight} color="gray.500" />} mb={6}>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => navigate('/exhibitor/registrations')}>
+                Registrations
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}>
+                Registration Details
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem>
+              <BreadcrumbLink onClick={() => navigate(`/exhibitor/registrations/${registrationId}/stands`)}>
+                Select Stands
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem isCurrentPage>
+              <BreadcrumbLink>Select Equipment</BreadcrumbLink>
+            </BreadcrumbItem>
+          </Breadcrumb>
+          
+          <Alert status="error" variant="solid" borderRadius="md">
+            <AlertIcon />
+            <AlertTitle mr={2}>Error</AlertTitle>
+            <Text>{error}</Text>
+          </Alert>
+          
+          <Button 
+            mt={6} 
+            leftIcon={<FiChevronLeft />}
+            onClick={() => navigate(`/exhibitor/registrations/${registrationId}/stands`)}
+          >
+            Back to Stand Selection
+          </Button>
+        </Box>
+      </DashboardLayout>
+    );
+  }
+  
+  if (!registration || registration.status !== 'approved') {
     return (
       <DashboardLayout>
         <Box p={8} textAlign="center">
           <Alert status="error" borderRadius="md">
             <AlertIcon />
-            <AlertTitle>
-              {!registration ? 'Registration not found' : 
-               registration.status !== 'approved' ? 'Registration not approved' : 
-               'You must select stands first'}
-            </AlertTitle>
+            <AlertTitle>Registration not found or not approved</AlertTitle>
           </Alert>
           <Button 
             mt={6} 
@@ -244,12 +283,12 @@ const SelectEquipment = () => {
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}>
+            <BreadcrumbLink onClick={() => handleNavigation(`/exhibitor/registrations/${registrationId}`)}>
               Registration Details
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/exhibitor/registrations/${registrationId}/stands`)}>
+            <BreadcrumbLink onClick={() => handleNavigation(`/exhibitor/registrations/${registrationId}/stands`)}>
               Select Stands
             </BreadcrumbLink>
           </BreadcrumbItem>
@@ -494,7 +533,7 @@ const SelectEquipment = () => {
                 )}
                 
                 <Stack spacing={4}>
-                <Button
+                  <Button
                     colorScheme="teal"
                     size="lg"
                     width="full"
@@ -509,7 +548,7 @@ const SelectEquipment = () => {
                     variant="outline"
                     width="full"
                     leftIcon={<FiChevronLeft />}
-                    onClick={() => navigate(`/exhibitor/registrations/${registrationId}/stands`)}
+                    onClick={() => handleNavigation(`/exhibitor/registrations/${registrationId}/stands`)}
                   >
                     Back to Stands
                   </Button>
@@ -519,6 +558,33 @@ const SelectEquipment = () => {
           </Box>
         </SimpleGrid>
       </Box>
+      
+      {/* Navigation Confirmation Modal */}
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Unsaved Changes</ModalHeader>
+          <ModalBody>
+            <Alert status="warning">
+              <AlertIcon />
+              <Box>
+                <AlertTitle>You have unsaved equipment selections</AlertTitle>
+                <Text mt={2}>
+                  If you navigate away now, your equipment selections will not be saved. Are you sure you want to continue?
+                </Text>
+              </Box>
+            </Alert>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="gray" mr={3} onClick={onClose}>
+              Cancel
+            </Button>
+            <Button colorScheme="red" onClick={confirmNavigation}>
+              Discard Selections
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </DashboardLayout>
   );
 };
