@@ -1,5 +1,5 @@
 // src/hooks/useRegistrationSelection.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@chakra-ui/react';
 import registrationService from '../services/registration.service';
 import eventService from '../services/event.service';
@@ -26,18 +26,8 @@ export default function useRegistrationSelection(registrationId) {
   
   const toast = useToast();
   
-  // Fetch initial data
-  useEffect(() => {
-    fetchRegistrationData();
-  }, [registrationId]);
-  
-  // Load selections from session storage
-  useEffect(() => {
-    loadSelections();
-  }, []);
-  
-  // Fetch registration, stands, and equipment data
-  const fetchRegistrationData = async () => {
+  // Fetch registration data
+  const fetchRegistrationData = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -48,16 +38,18 @@ export default function useRegistrationSelection(registrationId) {
       
       // Set any already selected stands/equipment
       if (registrationData.stands && registrationData.stands.length > 0) {
-        setSelectedStands(registrationData.stands.map(stand => 
+        const standIds = registrationData.stands.map(stand => 
           typeof stand === 'object' ? stand._id : stand
-        ));
+        );
+        setSelectedStands(standIds);
         setStandSelectionComplete(registrationData.standSelectionCompleted || false);
       }
       
       if (registrationData.equipment && registrationData.equipment.length > 0) {
-        setSelectedEquipment(registrationData.equipment.map(item => 
+        const equipmentIds = registrationData.equipment.map(item => 
           typeof item === 'object' ? item._id : item
-        ));
+        );
+        setSelectedEquipment(equipmentIds);
       }
       
       // Get event ID
@@ -66,7 +58,7 @@ export default function useRegistrationSelection(registrationId) {
         : registrationData.event;
       
       if (eventId) {
-        // Fetch stands
+        // Fetch event details to check for plan
         const eventDetails = await eventService.getEventById(eventId);
         
         if (!eventDetails.plan) {
@@ -75,14 +67,13 @@ export default function useRegistrationSelection(registrationId) {
           return;
         }
         
-        // Get all stands for the event
+        // Fetch all stands for the event
         const standsData = await eventService.getStands(eventId);
         
-        // Filter stands
-        const userSelectedStandIds = selectedStands.length ? selectedStands : 
-          (registrationData.stands?.map(stand => 
-            typeof stand === 'object' ? stand._id : stand
-          ) || []);
+        // Determine which stands are available or already selected by this user
+        const userSelectedStandIds = registrationData.stands?.map(stand => 
+          typeof stand === 'object' ? stand._id : stand
+        ) || [];
         
         const availableOrSelectedStands = standsData.filter(stand => 
           stand.status === 'available' || userSelectedStandIds.includes(stand._id)
@@ -108,16 +99,15 @@ export default function useRegistrationSelection(registrationId) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [registrationId, toast]);
   
-  // Save selections to session storage
-  const saveSelections = () => {
-    sessionStorage.setItem(`standSelection_${registrationId}`, JSON.stringify(selectedStands));
-    sessionStorage.setItem(`equipmentSelection_${registrationId}`, JSON.stringify(selectedEquipment));
-  };
+  // Initial data fetch
+  useEffect(() => {
+    fetchRegistrationData();
+  }, [fetchRegistrationData]);
   
-  // Load selections from session storage
-  const loadSelections = () => {
+  // Load saved selections when component initializes
+  useEffect(() => {
     try {
       const savedStands = sessionStorage.getItem(`standSelection_${registrationId}`);
       if (savedStands) {
@@ -137,10 +127,16 @@ export default function useRegistrationSelection(registrationId) {
     } catch (e) {
       console.error("Error loading saved selections:", e);
     }
-  };
+  }, [registrationId]);
+  
+  // Save selections to session storage
+  const saveSelections = useCallback(() => {
+    sessionStorage.setItem(`standSelection_${registrationId}`, JSON.stringify(selectedStands));
+    sessionStorage.setItem(`equipmentSelection_${registrationId}`, JSON.stringify(selectedEquipment));
+  }, [registrationId, selectedStands, selectedEquipment]);
   
   // Toggle stand selection
-  const toggleStandSelection = (standId) => {
+  const toggleStandSelection = useCallback((standId) => {
     setSelectedStands(prev => {
       if (prev.includes(standId)) {
         return prev.filter(id => id !== standId);
@@ -148,10 +144,10 @@ export default function useRegistrationSelection(registrationId) {
         return [...prev, standId];
       }
     });
-  };
+  }, []);
   
   // Toggle equipment selection
-  const toggleEquipmentSelection = (equipmentId) => {
+  const toggleEquipmentSelection = useCallback((equipmentId) => {
     setSelectedEquipment(prev => {
       if (prev.includes(equipmentId)) {
         return prev.filter(id => id !== equipmentId);
@@ -159,10 +155,10 @@ export default function useRegistrationSelection(registrationId) {
         return [...prev, equipmentId];
       }
     });
-  };
+  }, []);
   
   // Move to next step
-  const goToNextStep = () => {
+  const goToNextStep = useCallback(() => {
     if (currentStep === 0) {
       // Validate stand selection before moving to equipment
       if (selectedStands.length === 0) {
@@ -179,37 +175,42 @@ export default function useRegistrationSelection(registrationId) {
       // Save stand selection
       saveSelections();
       setStandSelectionComplete(true);
+    } else if (currentStep === 1) {
+      // Save equipment selection
+      saveSelections();
     }
     
     setCurrentStep(prev => prev + 1);
-  };
+  }, [currentStep, selectedStands, saveSelections, toast]);
   
   // Move to previous step
-  const goToPreviousStep = () => {
+  const goToPreviousStep = useCallback(() => {
+    saveSelections();
     setCurrentStep(prev => Math.max(0, prev - 1));
-  };
+  }, [saveSelections]);
   
   // Submit final selections
-  const submitSelections = async () => {
+  const submitSelections = useCallback(async () => {
     setIsSubmitting(true);
     
     try {
-      // First submit stand selection
-      await registrationService.selectStands(registrationId, {
+      // Sélection des stands avec le flag de complétion
+      const standResponse = await registrationService.selectStands(registrationId, {
         standIds: selectedStands,
         selectionCompleted: true
       });
       
-      // Then submit equipment selection
-      await registrationService.selectEquipment(registrationId, {
+      // Sélection de l'équipement avec le flag de complétion
+      const equipResponse = await registrationService.selectEquipment(registrationId, {
         equipmentIds: selectedEquipment,
         selectionCompleted: true
       });
       
-      // Complete the registration
-      await registrationService.completeRegistration(registrationId);
+      // Ne pas appeler completeRegistration explicitement
+      // Le backend semble compléter l'inscription automatiquement
+      // quand standSelectionCompleted et equipmentSelectionCompleted sont true
       
-      // Clear session storage
+      // Nettoyage du stockage
       sessionStorage.removeItem(`standSelection_${registrationId}`);
       sessionStorage.removeItem(`equipmentSelection_${registrationId}`);
       
@@ -234,24 +235,24 @@ export default function useRegistrationSelection(registrationId) {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [registrationId, selectedStands, selectedEquipment, toast]);
   
   // Calculate totals
-  const calculateStandsTotal = () => {
+  const calculateStandsTotal = useCallback(() => {
     return availableStands
       .filter(stand => selectedStands.includes(stand._id))
       .reduce((total, stand) => total + (stand.basePrice || 0), 0);
-  };
+  }, [availableStands, selectedStands]);
   
-  const calculateEquipmentTotal = () => {
+  const calculateEquipmentTotal = useCallback(() => {
     return availableEquipment
       .filter(item => selectedEquipment.includes(item._id))
       .reduce((total, item) => total + (item.price || 0), 0);
-  };
+  }, [availableEquipment, selectedEquipment]);
   
-  const calculateTotal = () => {
+  const calculateTotal = useCallback(() => {
     return calculateStandsTotal() + calculateEquipmentTotal();
-  };
+  }, [calculateStandsTotal, calculateEquipmentTotal]);
   
   return {
     // Data
@@ -275,6 +276,7 @@ export default function useRegistrationSelection(registrationId) {
     goToPreviousStep,
     submitSelections,
     saveSelections,
+    fetchRegistrationData,
     
     // Utilities
     calculateStandsTotal,

@@ -1,4 +1,4 @@
-// src/pages/exhibitor/RegistrationWizard.jsx
+// src/pages/Exhibitor/RegistrationWizard.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -8,7 +8,8 @@ import {
   Stepper, Step, StepIndicator, StepStatus, StepIcon, StepNumber,
   StepTitle, StepDescription, StepSeparator, useSteps, Link, InputGroup,
   InputLeftElement, Input, Tabs, TabList, Tab, TabPanels, TabPanel, Image,
-  Stat, StatLabel, StatNumber, StatHelpText
+  Stat, StatLabel, StatNumber, StatHelpText, Modal, ModalOverlay, ModalContent,
+  ModalHeader, ModalBody, ModalFooter, ModalCloseButton, useDisclosure
 } from '@chakra-ui/react';
 import {
   FiChevronRight, FiChevronLeft, FiSearch, FiDownload, FiCheckCircle,
@@ -29,6 +30,13 @@ const RegistrationWizard = () => {
   const { registrationId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  
+  // Confirmation modal controls
+  const { 
+    isOpen: isConfirmOpen, 
+    onOpen: onConfirmOpen, 
+    onClose: onConfirmClose 
+  } = useDisclosure();
   
   // Initialize the stepper component
   const { activeStep, setActiveStep } = useSteps({
@@ -63,27 +71,28 @@ const RegistrationWizard = () => {
     submitSelections,
     calculateStandsTotal,
     calculateEquipmentTotal,
-    calculateTotal
+    calculateTotal,
+    fetchRegistrationData
   } = useRegistrationSelection(registrationId);
+  
+  // Update stepper based on currentStep
+  useEffect(() => {
+    setActiveStep(currentStep);
+  }, [currentStep, setActiveStep]);
   
   // Filter stands when dependencies change
   useEffect(() => {
-    if (availableStands.length > 0) {
+    if (availableStands && availableStands.length > 0) {
       filterStands();
     }
   }, [availableStands, standSearchQuery, standTypeFilter]);
   
   // Filter equipment when dependencies change
   useEffect(() => {
-    if (availableEquipment.length > 0) {
+    if (availableEquipment && availableEquipment.length > 0) {
       filterEquipment();
     }
   }, [availableEquipment, equipSearchQuery, equipTypeFilter]);
-  
-  // Sync custom hook step with Chakra UI stepper
-  useEffect(() => {
-    setActiveStep(currentStep);
-  }, [currentStep, setActiveStep]);
   
   // Filter stands based on search and type
   const filterStands = () => {
@@ -131,12 +140,14 @@ const RegistrationWizard = () => {
   
   // Utility functions to get unique types
   const getStandTypes = () => {
+    if (!availableStands || availableStands.length === 0) return [];
     const types = new Set();
     availableStands.forEach(stand => types.add(stand.type));
     return Array.from(types);
   };
   
   const getEquipmentTypes = () => {
+    if (!availableEquipment || availableEquipment.length === 0) return [];
     const types = new Set();
     availableEquipment.forEach(item => types.add(item.type));
     return Array.from(types);
@@ -150,14 +161,29 @@ const RegistrationWizard = () => {
   const handlePrevious = (stepIndex) => {
     if (stepIndex !== undefined) {
       setActiveStep(stepIndex);
-    } else {
-      goToPreviousStep();
     }
+    goToPreviousStep();
+  };
+  
+  // Open confirmation modal
+  const handleConfirmRequest = () => {
+    if (selectedStands.length === 0) {
+      toast({
+        title: 'Stand Selection Required',
+        description: 'You must select at least one stand to complete your registration.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    onConfirmOpen();
   };
   
   // Final confirmation handler
   const handleConfirmation = async () => {
     const success = await submitSelections();
+    onConfirmClose();
     if (success) {
       navigate(`/exhibitor/registrations/${registrationId}`);
     }
@@ -200,19 +226,27 @@ const RegistrationWizard = () => {
             <AlertTitle mr={2}>Error</AlertTitle>
             <Text>{error}</Text>
           </Alert>
+          
+          <Button 
+            mt={6} 
+            colorScheme="teal" 
+            onClick={() => navigate('/exhibitor/registrations')}
+          >
+            Back to Registrations
+          </Button>
         </Box>
       </DashboardLayout>
     );
   }
   
-  // Check if registration exists and is approved
-  if (!registration || registration.status !== 'approved') {
+  // Check if registration exists and is in proper status
+  if (!registration) {
     return (
       <DashboardLayout>
         <Box p={8} textAlign="center">
           <Alert status="error" borderRadius="md">
             <AlertIcon />
-            <AlertTitle>Registration not found or not approved</AlertTitle>
+            <AlertTitle>Registration not found</AlertTitle>
           </Alert>
           <Button 
             mt={6} 
@@ -233,6 +267,8 @@ const RegistrationWizard = () => {
   const equipmentTypes = getEquipmentTypes();
   const hasStands = selectedStands.length > 0;
   const hasEquipment = selectedEquipment.length > 0;
+  const isRegistrationCompleted = registration.status === 'completed';
+  const readOnlyMode = isRegistrationCompleted;
   
   // Selected item details for display
   const selectedStandDetails = availableStands.filter(stand => selectedStands.includes(stand._id));
@@ -261,6 +297,18 @@ const RegistrationWizard = () => {
         <Heading size="lg" mb={6}>
           Registration for {event.name || 'Event'}
         </Heading>
+        
+        {readOnlyMode && (
+          <Alert status="info" mb={6} borderRadius="md">
+            <AlertIcon />
+            <Box>
+              <AlertTitle>Registration Completed</AlertTitle>
+              <Text>
+                This registration has been completed. You are viewing it in read-only mode.
+              </Text>
+            </Box>
+          </Alert>
+        )}
         
         {/* Stepper */}
         <Stepper index={activeStep} mb={10} colorScheme="teal">
@@ -334,6 +382,7 @@ const RegistrationWizard = () => {
                       placeholder="Search stands by number, type, or description..." 
                       value={standSearchQuery}
                       onChange={(e) => setStandSearchQuery(e.target.value)}
+                      isDisabled={readOnlyMode}
                     />
                   </InputGroup>
                   
@@ -347,6 +396,7 @@ const RegistrationWizard = () => {
                         colorScheme={standTypeFilter === type ? "teal" : "gray"}
                         leftIcon={<FiSquare />}
                         onClick={() => setStandTypeFilter(prev => prev === type ? '' : type)}
+                        isDisabled={readOnlyMode}
                       >
                         {type}
                       </Button>
@@ -356,7 +406,7 @@ const RegistrationWizard = () => {
                   <Divider mb={4} />
                   
                   <Text fontWeight="medium" mb={2}>
-                    {filteredStands.length} stand{filteredStands.length !== 1 ? 's' : ''} available
+                    {filteredStands && filteredStands.length} stand{filteredStands && filteredStands.length !== 1 ? 's' : ''} available
                   </Text>
                 </CardBody>
               </Card>
@@ -370,7 +420,7 @@ const RegistrationWizard = () => {
                   </Text>
                 </CardHeader>
                 <CardBody>
-                  {availableStands.length === 0 ? (
+                  {!availableStands || availableStands.length === 0 ? (
                     <Alert status="info" borderRadius="md">
                       <AlertIcon />
                       <Box>
@@ -381,7 +431,7 @@ const RegistrationWizard = () => {
                         </Text>
                       </Box>
                     </Alert>
-                  ) : filteredStands.length === 0 ? (
+                  ) : !filteredStands || filteredStands.length === 0 ? (
                     <Alert status="info" borderRadius="md">
                       <AlertIcon />
                       <Text>No stands found matching your criteria</Text>
@@ -408,12 +458,12 @@ const RegistrationWizard = () => {
                                   borderColor={isSelected ? "teal.500" : "gray.200"}
                                   bg={isSelected ? "teal.50" : "white"}
                                   _hover={{ 
-                                    boxShadow: isReserved ? "none" : "md",
-                                    borderColor: isReserved ? "gray.200" : "teal.300"
+                                    boxShadow: isReserved || readOnlyMode ? "none" : "md",
+                                    borderColor: isReserved || readOnlyMode ? "gray.200" : "teal.300"
                                   }}
                                   opacity={isReserved ? 0.7 : 1}
-                                  cursor={isReserved ? "not-allowed" : "pointer"}
-                                  onClick={() => !isReserved && toggleStandSelection(stand._id)}
+                                  cursor={isReserved || readOnlyMode ? "not-allowed" : "pointer"}
+                                  onClick={() => !isReserved && !readOnlyMode && toggleStandSelection(stand._id)}
                                   position="relative"
                                 >
                                   {isSelected && (
@@ -481,12 +531,12 @@ const RegistrationWizard = () => {
                                   borderColor={isSelected ? "teal.500" : "gray.200"}
                                   bg={isSelected ? "teal.50" : "white"}
                                   _hover={{ 
-                                    boxShadow: isReserved ? "none" : "md",
-                                    borderColor: isReserved ? "gray.200" : "teal.300"
+                                    boxShadow: isReserved || readOnlyMode ? "none" : "md",
+                                    borderColor: isReserved || readOnlyMode ? "gray.200" : "teal.300"
                                   }}
                                   opacity={isReserved ? 0.7 : 1}
-                                  cursor={isReserved ? "not-allowed" : "pointer"}
-                                  onClick={() => !isReserved && toggleStandSelection(stand._id)}
+                                  cursor={isReserved || readOnlyMode ? "not-allowed" : "pointer"}
+                                  onClick={() => !isReserved && !readOnlyMode && toggleStandSelection(stand._id)}
                                 >
                                   <CardBody>
                                     <Flex justify="space-between" align="center">
@@ -500,7 +550,7 @@ const RegistrationWizard = () => {
                                       </Box>
                                       <Checkbox 
                                         isChecked={isSelected}
-                                        isDisabled={isReserved}
+                                        isDisabled={isReserved || readOnlyMode}
                                         colorScheme="teal"
                                         size="lg"
                                         onChange={() => {}}
@@ -572,7 +622,7 @@ const RegistrationWizard = () => {
                   size="lg"
                   rightIcon={<FiChevronRight />}
                   onClick={handleNext}
-                  isDisabled={selectedStands.length === 0}
+                  isDisabled={selectedStands.length === 0 || readOnlyMode}
                 >
                   Next: Select Equipment
                 </Button>
@@ -596,6 +646,7 @@ const RegistrationWizard = () => {
                       placeholder="Search equipment by name, type, or description..." 
                       value={equipSearchQuery}
                       onChange={(e) => setEquipSearchQuery(e.target.value)}
+                      isDisabled={readOnlyMode}
                     />
                   </InputGroup>
                   
@@ -609,6 +660,7 @@ const RegistrationWizard = () => {
                         colorScheme={equipTypeFilter === type ? "teal" : "gray"}
                         leftIcon={<FiPackage />}
                         onClick={() => setEquipTypeFilter(prev => prev === type ? '' : type)}
+                        isDisabled={readOnlyMode}
                       >
                         {type}
                       </Button>
@@ -618,7 +670,7 @@ const RegistrationWizard = () => {
                   <Divider mb={4} />
                   
                   <Text fontWeight="medium" mb={2}>
-                    {filteredEquipment.length} item{filteredEquipment.length !== 1 ? 's' : ''} available
+                    {filteredEquipment && filteredEquipment.length} item{filteredEquipment && filteredEquipment.length !== 1 ? 's' : ''} available
                   </Text>
                 </CardBody>
               </Card>
@@ -632,7 +684,7 @@ const RegistrationWizard = () => {
                   </Text>
                 </CardHeader>
                 <CardBody>
-                  {filteredEquipment.length === 0 ? (
+                  {!filteredEquipment || filteredEquipment.length === 0 ? (
                     <Alert status="info" borderRadius="md">
                       <AlertIcon />
                       <Text>No equipment found matching your criteria</Text>
@@ -658,11 +710,11 @@ const RegistrationWizard = () => {
                                   borderColor={isSelected ? "teal.500" : "gray.200"}
                                   bg={isSelected ? "teal.50" : "white"}
                                   _hover={{ 
-                                    boxShadow: "md",
-                                    borderColor: "teal.300"
+                                    boxShadow: readOnlyMode ? "none" : "md",
+                                    borderColor: readOnlyMode ? "gray.200" : "teal.300"
                                   }}
-                                  cursor="pointer"
-                                  onClick={() => toggleEquipmentSelection(item._id)}
+                                  cursor={readOnlyMode ? "not-allowed" : "pointer"}
+                                  onClick={() => !readOnlyMode && toggleEquipmentSelection(item._id)}
                                   position="relative"
                                   overflow="hidden"
                                 >
@@ -728,11 +780,11 @@ const RegistrationWizard = () => {
                                   borderColor={isSelected ? "teal.500" : "gray.200"}
                                   bg={isSelected ? "teal.50" : "white"}
                                   _hover={{ 
-                                    boxShadow: "md",
-                                    borderColor: "teal.300"
+                                    boxShadow: readOnlyMode ? "none" : "md",
+                                    borderColor: readOnlyMode ? "gray.200" : "teal.300"
                                   }}
-                                  cursor="pointer"
-                                  onClick={() => toggleEquipmentSelection(item._id)}
+                                  cursor={readOnlyMode ? "not-allowed" : "pointer"}
+                                  onClick={() => !readOnlyMode && toggleEquipmentSelection(item._id)}
                                 >
                                   <CardBody>
                                     <Flex justify="space-between" align="center">
@@ -752,6 +804,7 @@ const RegistrationWizard = () => {
                                         isChecked={isSelected}
                                         colorScheme="teal"
                                         size="lg"
+                                        isDisabled={readOnlyMode}
                                         onChange={() => {}}
                                       />
                                     </Flex>
@@ -819,7 +872,8 @@ const RegistrationWizard = () => {
                 <Button
                   variant="outline"
                   leftIcon={<FiChevronLeft />}
-                  onClick={handlePrevious}
+                  onClick={() => handlePrevious(0)}
+                  isDisabled={readOnlyMode}
                 >
                   Back to Stands
                 </Button>
@@ -828,6 +882,7 @@ const RegistrationWizard = () => {
                   colorScheme="teal"
                   rightIcon={<FiChevronRight />}
                   onClick={handleNext}
+                  isDisabled={readOnlyMode}
                 >
                   Next: Review & Confirm
                 </Button>
@@ -873,14 +928,16 @@ const RegistrationWizard = () => {
                           ))}
                         </SimpleGrid>
                         
-                        <Button 
-                          leftIcon={<FiChevronLeft />}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePrevious(0)}
-                        >
-                          Modify Stands
-                        </Button>
+                        {!readOnlyMode && (
+                          <Button 
+                            leftIcon={<FiChevronLeft />}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePrevious(0)}
+                          >
+                            Modify Stands
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <Alert status="error" borderRadius="md">
@@ -890,14 +947,16 @@ const RegistrationWizard = () => {
                           <Text>
                             You must select at least one stand to complete your registration.
                           </Text>
-                          <Button 
-                            mt={2}
-                            colorScheme="teal"
-                            size="sm"
-                            onClick={() => handlePrevious(0)}
-                          >
-                            Select Stands
-                          </Button>
+                          {!readOnlyMode && (
+                            <Button 
+                              mt={2}
+                              colorScheme="teal"
+                              size="sm"
+                              onClick={() => handlePrevious(0)}
+                            >
+                              Select Stands
+                            </Button>
+                          )}
                         </Box>
                       </Alert>
                     )}
@@ -931,14 +990,16 @@ const RegistrationWizard = () => {
                           ))}
                         </SimpleGrid>
                         
-                        <Button 
-                          leftIcon={<FiChevronLeft />}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePrevious(1)}
-                        >
-                          Modify Equipment
-                        </Button>
+                        {!readOnlyMode && (
+                          <Button 
+                            leftIcon={<FiChevronLeft />}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePrevious(1)}
+                          >
+                            Modify Equipment
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <Alert status="info" borderRadius="md">
@@ -948,14 +1009,16 @@ const RegistrationWizard = () => {
                           <Text>
                             Equipment selection is optional. You can continue without selecting any equipment.
                           </Text>
-                          <Button 
-                            mt={2}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePrevious(1)}
-                          >
-                            Select Equipment
-                          </Button>
+                          {!readOnlyMode && (
+                            <Button 
+                              mt={2}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePrevious(1)}
+                            >
+                              Select Equipment
+                            </Button>
+                          )}
                         </Box>
                       </Alert>
                     )}
@@ -999,37 +1062,54 @@ const RegistrationWizard = () => {
                     </Stat>
                   </SimpleGrid>
                   
-                  <Alert status="info" mb={6} borderRadius="md">
-                    <AlertIcon />
-                    <Box>
-                      <AlertTitle>Please Note</AlertTitle>
-                      <Text fontSize="sm">
-                        By confirming your registration, you agree to participate in this event and 
-                        acknowledge that you will be invoiced for the total amount shown above.
-                      </Text>
-                    </Box>
-                  </Alert>
+                  {!readOnlyMode && (
+                    <Alert status="info" mb={6} borderRadius="md">
+                      <AlertIcon />
+                      <Box>
+                        <AlertTitle>Please Note</AlertTitle>
+                        <Text fontSize="sm">
+                          By confirming your registration, you agree to participate in this event and 
+                          acknowledge that you will be invoiced for the total amount shown above.
+                          This action cannot be undone.
+                        </Text>
+                      </Box>
+                    </Alert>
+                  )}
                   
                   <Flex justify="space-between">
-                    <Button
-                      variant="outline"
-                      leftIcon={<FiChevronLeft />}
-                      onClick={() => handlePrevious(1)}
-                    >
-                      Back to Equipment
-                    </Button>
+                    {!readOnlyMode && (
+                      <>
+                        <Button
+                          variant="outline"
+                          leftIcon={<FiChevronLeft />}
+                          onClick={() => handlePrevious(1)}
+                        >
+                          Back to Equipment
+                        </Button>
+                        
+                        <Button
+                          colorScheme="teal"
+                          size="lg"
+                          leftIcon={<FiCheckCircle />}
+                          onClick={handleConfirmRequest}
+                          isLoading={isSubmitting}
+                          loadingText="Confirming..."
+                          isDisabled={!hasStands}
+                        >
+                          Confirm Registration
+                        </Button>
+                      </>
+                    )}
                     
-                    <Button
-                      colorScheme="teal"
-                      size="lg"
-                      leftIcon={<FiCheckCircle />}
-                      onClick={handleConfirmation}
-                      isLoading={isSubmitting}
-                      loadingText="Confirming..."
-                      isDisabled={!hasStands}
-                    >
-                      Confirm Registration
-                    </Button>
+                    {readOnlyMode && (
+                      <Button
+                        colorScheme="teal"
+                        onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}
+                        width="full"
+                      >
+                        Back to Registration Details
+                      </Button>
+                    )}
                   </Flex>
                 </CardBody>
               </Card>
@@ -1037,6 +1117,52 @@ const RegistrationWizard = () => {
           )}
         </Box>
       </Box>
+      
+      {/* Confirmation Modal */}
+      <Modal isOpen={isConfirmOpen} onClose={onConfirmClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Confirm Registration</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Alert status="warning" mb={4} borderRadius="md">
+              <AlertIcon />
+              <Box>
+                <AlertTitle>This action cannot be undone</AlertTitle>
+                <Text>
+                  Once confirmed, you will not be able to change your stand and equipment selections.
+                </Text>
+              </Box>
+            </Alert>
+            
+            <Text mb={4}>
+              You are about to confirm your registration for <strong>{event.name}</strong> with:
+            </Text>
+            
+            <VStack align="start" spacing={2} mb={4}>
+              <Text><strong>{selectedStands.length}</strong> stand(s) - ${calculateStandsTotal()}</Text>
+              <Text><strong>{selectedEquipment.length}</strong> equipment item(s) - ${calculateEquipmentTotal()}</Text>
+              <Text fontWeight="bold">Total: ${calculateTotal()}</Text>
+            </VStack>
+            
+            <Text>
+              By confirming, you agree to participate in this event and will be invoiced for the total amount.
+            </Text>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" mr={3} onClick={onConfirmClose}>
+              Cancel
+            </Button>
+            <Button 
+              colorScheme="teal" 
+              onClick={handleConfirmation}
+              isLoading={isSubmitting}
+            >
+              Confirm Registration
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </DashboardLayout>
   );
 };
