@@ -32,6 +32,17 @@ import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Image,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
 } from '@chakra-ui/react';
 import {
   FiCalendar,
@@ -50,10 +61,14 @@ import {
   FiMail,
   FiPhone,
   FiHome,
+  FiPackage,
+  FiFile,
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import registrationService from '../../services/registration.service';
 import { getStatusColorScheme, getStatusDisplayText } from '../../constants/registrationConstants';
+import { getEquipmentImageUrl } from '../../utils/fileUtils';
+import PlanViewerModal from '../../components/organizer/plans/PlanViewerModal';
 
 const RegistrationDetail = () => {
   const { registrationId } = useParams();
@@ -64,6 +79,9 @@ const RegistrationDetail = () => {
   const [loading, setLoading] = useState(true);
   const [cancelLoading, setCancelLoading] = useState(false);
   
+  // Plan viewer modal
+  const { isOpen: isPlanViewerOpen, onOpen: onPlanViewerOpen, onClose: onPlanViewerClose } = useDisclosure();
+  // Cancel confirmation modal
   const { isOpen: isCancelOpen, onOpen: onCancelOpen, onClose: onCancelClose } = useDisclosure();
   
   useEffect(() => {
@@ -108,7 +126,6 @@ const RegistrationDetail = () => {
   };
   
   const handleProceedToSelection = () => {
-    // Updated to use the correct path for the selection wizard
     navigate(`/exhibitor/registrations/${registrationId}/selection`);
   };
   
@@ -123,7 +140,6 @@ const RegistrationDetail = () => {
         duration: 5000,
         isClosable: true,
       });
-      // Refresh registration details
       fetchRegistrationDetails();
       onCancelClose();
     } catch (error) {
@@ -173,6 +189,7 @@ const RegistrationDetail = () => {
   const status = registration.status;
   const exhibitor = registration.exhibitor || {};
   const company = exhibitor.company || {};
+  const planId = event.plan?._id || event.plan;
   
   // Check if within 10 days of event start
   const within10Days = isWithin10Days(event.startDate);
@@ -243,6 +260,16 @@ const RegistrationDetail = () => {
                   <Text fontWeight="medium">Opening Hours:</Text>
                   <Text>{event.openingHours || 'Not specified'}</Text>
                 </HStack>
+                
+                {planId && (
+                  <HStack>
+                    <Icon as={FiFile} color="teal.500" />
+                    <Text fontWeight="medium">Floor Plan:</Text>
+                    <Button size="xs" colorScheme="blue" onClick={onPlanViewerOpen}>
+                      View Plan
+                    </Button>
+                  </HStack>
+                )}
                 
                 <Divider />
                 
@@ -401,9 +428,8 @@ const RegistrationDetail = () => {
                       colorScheme="teal" 
                       width="full" 
                       rightIcon={<FiChevronRight />}
-                      onClick={() => navigate(`/exhibitor/registrations/${registrationId}/selection`)}
+                      onClick={handleProceedToSelection}
                     >
-                      {/* FIXED: Correct path for selection */}
                       Proceed to Selection
                     </Button>
                   )}
@@ -429,13 +455,13 @@ const RegistrationDetail = () => {
                         leftIcon={<FiAlertTriangle />}
                         onClick={onCancelOpen}
                         mt={4}
-                        isDisabled={isWithin10Days(event.startDate)}
+                        isDisabled={within10Days}
                       >
                         Cancel Registration
                       </Button>
                       
                       {/* Show warning if within 10 days */}
-                      {isWithin10Days(event.startDate) && (
+                      {within10Days && (
                         <Alert status="warning" mt={2} size="sm">
                           <AlertIcon />
                           <Text fontSize="sm">
@@ -457,33 +483,38 @@ const RegistrationDetail = () => {
               <Heading size="md">Selected Stands</Heading>
             </CardHeader>
             <CardBody>
-              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-                {registration.stands.map(stand => (
-                  <Card key={stand._id} variant="outline">
-                    <CardBody>
-                      <Heading size="sm" mb={2}>Stand #{stand.number}</Heading>
-                      <VStack align="start" spacing={2}>
-                        <HStack>
-                          <Text fontWeight="medium">Type:</Text>
-                          <Text>{stand.type}</Text>
-                        </HStack>
-                        <HStack>
-                          <Text fontWeight="medium">Area:</Text>
-                          <Text>{stand.area} m²</Text>
-                        </HStack>
-                        <HStack>
-                          <Text fontWeight="medium">Price:</Text>
-                          <Text>${stand.basePrice}</Text>
-                        </HStack>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                ))}
-              </SimpleGrid>
+              <Table size="sm" mb={4} variant="simple">
+                <Thead>
+                  <Tr>
+                    <Th>Stand Number</Th>
+                    <Th>Type</Th>
+                    <Th>Area</Th>
+                    <Th isNumeric>Price</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {registration.stands.map(stand => (
+                    <Tr key={stand._id}>
+                      <Td fontWeight="medium">#{stand.number}</Td>
+                      <Td>
+                        <Badge colorScheme="blue">{stand.type}</Badge>
+                      </Td>
+                      <Td>{stand.area} m²</Td>
+                      <Td isNumeric>${stand.basePrice}</Td>
+                    </Tr>
+                  ))}
+                  <Tr fontWeight="bold">
+                    <Td colSpan={3}>Total Stand Price</Td>
+                    <Td isNumeric>
+                      ${registration.stands.reduce((total, stand) => total + (stand.basePrice || 0), 0)}
+                    </Td>
+                  </Tr>
+                </Tbody>
+              </Table>
               
               {status === 'approved' && (
                 <Button 
-                  mt={4} 
+                  mt={2} 
                   colorScheme="teal" 
                   variant="outline"
                   onClick={handleProceedToSelection}
@@ -502,28 +533,75 @@ const RegistrationDetail = () => {
               <Heading size="md">Selected Equipment</Heading>
             </CardHeader>
             <CardBody>
-              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-                {registration.equipment.map(item => (
-                  <Card key={item._id} variant="outline">
-                    <CardBody>
-                      <Heading size="sm" mb={2}>{item.name}</Heading>
-                      <Text noOfLines={2} mb={2}>{item.description}</Text>
-                      <HStack>
-                        <Text fontWeight="medium">Type:</Text>
-                        <Text>{item.type}</Text>
-                      </HStack>
-                      <HStack mt={1}>
-                        <Text fontWeight="medium">Price:</Text>
-                        <Text>${item.price}</Text>
-                      </HStack>
-                    </CardBody>
-                  </Card>
-                ))}
-              </SimpleGrid>
+              <Table size="sm" mb={4} variant="simple">
+                <Thead>
+                  <Tr>
+                    <Th>Equipment</Th>
+                    <Th>Type</Th>
+                    <Th>Quantity</Th>
+                    <Th isNumeric>Unit Price</Th>
+                    <Th isNumeric>Total</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {registration.equipment.map(item => {
+                    const quantity = registration.equipmentQuantities?.find(eq => {
+                      const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
+                      const itemId = typeof item === 'object' ? item._id : item;
+                      return String(eqId) === String(itemId);
+                    })?.quantity || 1;
+                    
+                    return (
+                      <Tr key={item._id}>
+                        <Td fontWeight="medium">
+                          <HStack>
+                            {item.imageUrl && (
+                              <Box
+                                width="40px"
+                                height="40px"
+                                borderRadius="md"
+                                overflow="hidden"
+                                mr={2}
+                              >
+                                <Image 
+                                  src={getEquipmentImageUrl(item.imageUrl)} 
+                                  boxSize="40px"
+                                  objectFit="cover"
+                                  alt={item.name}
+                                />
+                              </Box>
+                            )}
+                            {item.name}
+                          </HStack>
+                        </Td>
+                        <Td>
+                          <Badge colorScheme="green">{item.type}</Badge>
+                        </Td>
+                        <Td>{quantity}</Td>
+                        <Td isNumeric>${item.price}</Td>
+                        <Td isNumeric>${item.price * quantity}</Td>
+                      </Tr>
+                    );
+                  })}
+                  <Tr fontWeight="bold">
+                    <Td colSpan={4}>Total Equipment Price</Td>
+                    <Td isNumeric>
+                      ${registration.equipment.reduce((total, item) => {
+                        const quantity = registration.equipmentQuantities?.find(eq => {
+                          const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
+                          const itemId = typeof item === 'object' ? item._id : item;
+                          return String(eqId) === String(itemId);
+                        })?.quantity || 1;
+                        return total + ((item.price || 0) * quantity);
+                      }, 0)}
+                    </Td>
+                  </Tr>
+                </Tbody>
+              </Table>
               
               {status === 'approved' && (
                 <Button 
-                  mt={4} 
+                  mt={2} 
                   colorScheme="teal" 
                   variant="outline"
                   onClick={handleProceedToSelection}
@@ -542,31 +620,61 @@ const RegistrationDetail = () => {
               <Heading size="md">Order Summary</Heading>
             </CardHeader>
             <CardBody>
-              <Flex justify="space-between" mb={3}>
-                <Text fontWeight="medium">Stand(s) Total:</Text>
-                <Text>
-                  ${registration.stands?.reduce((total, stand) => total + (stand.basePrice || 0), 0) || 0}
-                </Text>
-              </Flex>
-              <Flex justify="space-between" mb={3}>
-                <Text fontWeight="medium">Equipment Total:</Text>
-                <Text>
-                  ${registration.equipment?.reduce((total, item) => total + (item.price || 0), 0) || 0}
-                </Text>
-              </Flex>
-              <Divider my={3} />
-              <Flex justify="space-between" fontWeight="bold">
-                <Text>Total Amount:</Text>
-                <Text>
-                  ${
-                    (registration.stands?.reduce((total, stand) => total + (stand.basePrice || 0), 0) || 0) + 
-                    (registration.equipment?.reduce((total, item) => total + (item.price || 0), 0) || 0)
-                  }
-                </Text>
-              </Flex>
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mb={6}>
+                <Stat>
+                  <StatLabel>Stands Total</StatLabel>
+                  <StatNumber>
+                    ${registration.stands?.reduce((total, stand) => total + (stand.basePrice || 0), 0) || 0}
+                  </StatNumber>
+                  <StatHelpText>
+                    <HStack>
+                      <Icon as={FiBox} />
+                      <Text>{registration.stands?.length || 0} stand(s)</Text>
+                    </HStack>
+                  </StatHelpText>
+                </Stat>
+                
+                <Stat>
+                  <StatLabel>Equipment Total</StatLabel>
+                  <StatNumber>
+                    ${registration.equipment?.reduce((total, item) => {
+                      const quantity = registration.equipmentQuantities?.find(eq => {
+                        const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
+                        const itemId = typeof item === 'object' ? item._id : item;
+                        return String(eqId) === String(itemId);
+                      })?.quantity || 1;
+                      return total + ((item.price || 0) * quantity);
+                    }, 0) || 0}
+                  </StatNumber>
+                  <StatHelpText>
+                    <HStack>
+                      <Icon as={FiPackage} />
+                      <Text>{registration.equipment?.length || 0} item(s)</Text>
+                    </HStack>
+                  </StatHelpText>
+                </Stat>
+                
+                <Stat>
+                  <StatLabel>Grand Total</StatLabel>
+                  <StatNumber>
+                    ${
+                      (registration.stands?.reduce((total, stand) => total + (stand.basePrice || 0), 0) || 0) + 
+                      (registration.equipment?.reduce((total, item) => {
+                        const quantity = registration.equipmentQuantities?.find(eq => {
+                          const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
+                          const itemId = typeof item === 'object' ? item._id : item;
+                          return String(eqId) === String(itemId);
+                        })?.quantity || 1;
+                        return total + ((item.price || 0) * quantity);
+                      }, 0) || 0)
+                    }
+                  </StatNumber>
+                  <StatHelpText>Combined total</StatHelpText>
+                </Stat>
+              </SimpleGrid>
               
               <Button 
-                mt={6} 
+                mt={2} 
                 colorScheme="blue" 
                 width="full" 
                 leftIcon={<FiCreditCard />}
@@ -578,6 +686,15 @@ const RegistrationDetail = () => {
           </Card>
         )}
       </Box>
+      
+      {/* Plan Viewer Modal */}
+      {planId && (
+        <PlanViewerModal
+          isOpen={isPlanViewerOpen}
+          onClose={onPlanViewerClose}
+          planId={planId}
+        />
+      )}
       
       {/* Cancel Registration Confirmation Modal */}
       <Modal isOpen={isCancelOpen} onClose={onCancelClose}>

@@ -1,4 +1,3 @@
-
 // src/pages/Exhibitor/RegistrationWizard.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -8,18 +7,19 @@ import {
   AlertTitle, Icon, Breadcrumb, BreadcrumbItem, BreadcrumbLink, 
   Stepper, Step, StepIndicator, StepStatus, StepIcon, StepNumber,
   StepTitle, StepDescription, StepSeparator, useSteps, Link, InputGroup,
-  InputLeftElement, Input, Tabs, TabList, Tab, TabPanels, TabPanel, Image,
-  Stat, StatLabel, StatNumber, StatHelpText, Modal, ModalOverlay, ModalContent,
-  ModalHeader, ModalBody, ModalFooter, ModalCloseButton, useDisclosure
+  InputLeftElement, Input, Stat, StatLabel, StatNumber, StatHelpText, Modal, 
+  ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, 
+  useDisclosure
 } from '@chakra-ui/react';
 import {
   FiChevronRight, FiChevronLeft, FiSearch, FiDownload, FiCheckCircle,
-  FiSquare, FiPackage, FiBox, FiAlertTriangle, FiInfo
+  FiSquare, FiPackage, FiBox, FiAlertTriangle, FiInfo, FiFile
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import useRegistrationSelection from '../../hooks/useRegistrationSelection';
 import { getPlanFileUrl } from '../../utils/fileUtils';
 import EquipmentCard from '../../components/exhibitor/registrations/EquipmentCard';
+import PlanViewerModal from '../../components/organizer/plans/PlanViewerModal';
 
 // Define the steps for our wizard
 const steps = [
@@ -32,6 +32,9 @@ const RegistrationWizard = () => {
   const { registrationId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  
+  // Plan viewer modal
+  const { isOpen: isPlanViewerOpen, onOpen: onPlanViewerOpen, onClose: onPlanViewerClose } = useDisclosure();
   
   // Confirmation modal controls
   const { 
@@ -50,7 +53,7 @@ const RegistrationWizard = () => {
   const [standSearchQuery, setStandSearchQuery] = useState('');
   const [standTypeFilter, setStandTypeFilter] = useState('');
   const [equipSearchQuery, setEquipSearchQuery] = useState('');
-  const [equipTypeFilter, setEquipTypeFilter] = useState('');
+  const [equipCategoryFilter, setEquipCategoryFilter] = useState('');
   const [filteredStands, setFilteredStands] = useState([]);
   const [filteredEquipment, setFilteredEquipment] = useState([]);
   
@@ -97,7 +100,7 @@ const RegistrationWizard = () => {
     if (availableEquipment && availableEquipment.length > 0) {
       filterEquipment();
     }
-  }, [availableEquipment, equipSearchQuery, equipTypeFilter]);
+  }, [availableEquipment, equipSearchQuery, equipCategoryFilter]);
   
   // Filter stands based on search and type
   const filterStands = () => {
@@ -121,7 +124,7 @@ const RegistrationWizard = () => {
     setFilteredStands(filtered);
   };
   
-  // Filter equipment based on search and type
+  // Filter equipment based on search and category
   const filterEquipment = () => {
     let filtered = [...availableEquipment];
     
@@ -130,14 +133,13 @@ const RegistrationWizard = () => {
       const query = equipSearchQuery.toLowerCase();
       filtered = filtered.filter(item => 
         item.name.toLowerCase().includes(query) ||
-        (item.type && item.type.toLowerCase().includes(query)) ||
         (item.description && item.description.toLowerCase().includes(query))
       );
     }
     
-    // Apply type filter
-    if (equipTypeFilter !== '') {
-      filtered = filtered.filter(item => item.type === equipTypeFilter);
+    // Apply category filter
+    if (equipCategoryFilter !== '') {
+      filtered = filtered.filter(item => item.category === equipCategoryFilter);
     }
     
     setFilteredEquipment(filtered);
@@ -155,15 +157,15 @@ const RegistrationWizard = () => {
     return Array.from(types);
   };
   
-  const getEquipmentTypes = () => {
+  const getEquipmentCategories = () => {
     if (!availableEquipment || availableEquipment.length === 0) return [];
-    const types = new Set();
+    const categories = new Set();
     availableEquipment.forEach(item => {
-      if (item.type) {
-        types.add(item.type);
+      if (item.category) {
+        categories.add(item.category);
       }
     });
-    return Array.from(types);
+    return Array.from(categories);
   };
   
   // Navigation handlers
@@ -276,8 +278,9 @@ const RegistrationWizard = () => {
   // Extract variables for template use
   const event = registration.event || {};
   const plan = event.plan || {};
+  const planId = typeof plan === 'object' && plan._id ? plan._id : plan;
   const standTypes = getStandTypes();
-  const equipmentTypes = getEquipmentTypes();
+  const equipmentCategories = getEquipmentCategories();
   const hasStands = selectedStands.length > 0;
   const hasEquipment = selectedEquipment.length > 0;
   const isRegistrationCompleted = registration.status === 'completed';
@@ -360,25 +363,35 @@ const RegistrationWizard = () => {
                     <Box>
                       <AlertTitle>Floor Plan Available</AlertTitle>
                       <Text>
-                        Download the floor plan to see the layout and locations of all stands.
+                        View the floor plan to see the layout and locations of all stands.
                       </Text>
-                      {plan && plan.pdfPath && (
-                        <Link 
-                          href={getPlanFileUrl(plan.pdfPath)} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          display="inline-block"
-                          mt={2}
-                        >
+                      <HStack mt={3} spacing={4}>
+                        {planId && (
                           <Button 
-                            size="sm" 
-                            leftIcon={<FiDownload />} 
+                            leftIcon={<FiFile />} 
                             colorScheme="blue"
+                            onClick={onPlanViewerOpen}
                           >
-                            Download Floor Plan
+                            View Floor Plan
                           </Button>
-                        </Link>
-                      )}
+                        )}
+                        
+                        {plan && plan.pdfPath && (
+                          <Link 
+                            href={getPlanFileUrl(plan.pdfPath)} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <Button 
+                              leftIcon={<FiDownload />} 
+                              variant="outline"
+                              colorScheme="blue"
+                            >
+                              Download Plan
+                            </Button>
+                          </Link>
+                        )}
+                      </HStack>
                     </Box>
                   </Alert>
                 </CardBody>
@@ -450,133 +463,75 @@ const RegistrationWizard = () => {
                       <Text>No stands found matching your criteria</Text>
                     </Alert>
                   ) : (
-                    <Tabs variant="enclosed" colorScheme="teal">
-                      <TabList>
-                        <Tab>Grid View</Tab>
-                        <Tab>List View</Tab>
-                      </TabList>
-                      
-                      <TabPanels>
-                        {/* Grid View */}
-                        <TabPanel px={0}>
-                          <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
-                            {filteredStands.map(stand => {
-                              const isSelected = selectedStands.includes(stand._id);
-                              const isReserved = stand.status === 'reserved' && !isSelected;
-                              
-                              return (
-                                <Card 
-                                  key={stand._id} 
-                                  variant="outline"
-                                  borderColor={isSelected ? "teal.500" : "gray.200"}
-                                  bg={isSelected ? "teal.50" : "white"}
-                                  _hover={{ 
-                                    boxShadow: isReserved || readOnlyMode ? "none" : "md",
-                                    borderColor: isReserved || readOnlyMode ? "gray.200" : "teal.300"
-                                  }}
-                                  opacity={isReserved ? 0.7 : 1}
-                                  cursor={isReserved || readOnlyMode ? "not-allowed" : "pointer"}
-                                  onClick={() => !isReserved && !readOnlyMode && toggleStandSelection(stand._id)}
-                                  position="relative"
-                                >
-                                  {isSelected && (
-                                    <Icon 
-                                      as={FiCheckCircle} 
-                                      position="absolute" 
-                                      top={2} 
-                                      right={2} 
-                                      color="teal.500"
-                                      boxSize={5}
-                                    />
-                                  )}
-                                  
-                                  <CardBody>
-                                    <Heading size="sm" mb={2}>Stand #{stand.number}</Heading>
-                                    <VStack align="start" spacing={1}>
-                                      <HStack>
-                                        <Text fontWeight="medium">Type:</Text>
-                                        <Text>{stand.type}</Text>
-                                      </HStack>
-                                      <HStack>
-                                        <Text fontWeight="medium">Area:</Text>
-                                        <Text>{stand.area} m²</Text>
-                                      </HStack>
-                                      <HStack>
-                                        <Text fontWeight="medium">Price:</Text>
-                                        <Text>${stand.basePrice}</Text>
-                                      </HStack>
-                                    </VStack>
-                                    
-                                    {stand.description && (
-                                      <Text mt={3} fontSize="sm" color="gray.600" noOfLines={2}>
-                                        {stand.description}
-                                      </Text>
-                                    )}
-                                    
-                                    {isReserved && (
-                                      <Badge 
-                                        colorScheme="red" 
-                                        position="absolute"
-                                        top={2}
-                                        right={2}
-                                      >
-                                        Reserved
-                                      </Badge>
-                                    )}
-                                  </CardBody>
-                                </Card>
-                              );
-                            })}
-                          </SimpleGrid>
-                        </TabPanel>
+                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={4}>
+                      {filteredStands.map(stand => {
+                        const isSelected = selectedStands.includes(stand._id);
+                        const isReserved = stand.status === 'reserved' && !isSelected;
                         
-                        {/* List View */}
-                        <TabPanel px={0}>
-                          <VStack spacing={2} align="stretch">
-                            {filteredStands.map(stand => {
-                              const isSelected = selectedStands.includes(stand._id);
-                              const isReserved = stand.status === 'reserved' && !isSelected;
+                        return (
+                          <Card 
+                            key={stand._id} 
+                            variant="outline"
+                            borderColor={isSelected ? "teal.500" : "gray.200"}
+                            bg={isSelected ? "teal.50" : "white"}
+                            _hover={{ 
+                              boxShadow: isReserved || readOnlyMode ? "none" : "md",
+                              borderColor: isReserved || readOnlyMode ? "gray.200" : "teal.300"
+                            }}
+                            opacity={isReserved ? 0.7 : 1}
+                            cursor={isReserved || readOnlyMode ? "not-allowed" : "pointer"}
+                            onClick={() => !isReserved && !readOnlyMode && toggleStandSelection(stand._id)}
+                            position="relative"
+                          >
+                            {isSelected && (
+                              <Icon 
+                                as={FiCheckCircle} 
+                                position="absolute" 
+                                top={2} 
+                                right={2} 
+                                color="teal.500"
+                                boxSize={5}
+                              />
+                            )}
+                            
+                            <CardBody>
+                              <Heading size="sm" mb={2}>Stand #{stand.number}</Heading>
+                              <VStack align="start" spacing={1}>
+                                <HStack>
+                                  <Text fontWeight="medium">Type:</Text>
+                                  <Text>{stand.type}</Text>
+                                </HStack>
+                                <HStack>
+                                  <Text fontWeight="medium">Area:</Text>
+                                  <Text>{stand.area} m²</Text>
+                                </HStack>
+                                <HStack>
+                                  <Text fontWeight="medium">Price:</Text>
+                                  <Text>${stand.basePrice}</Text>
+                                </HStack>
+                              </VStack>
                               
-                              return (
-                                <Card 
-                                  key={stand._id} 
-                                  variant="outline"
-                                  borderColor={isSelected ? "teal.500" : "gray.200"}
-                                  bg={isSelected ? "teal.50" : "white"}
-                                  _hover={{ 
-                                    boxShadow: isReserved || readOnlyMode ? "none" : "md",
-                                    borderColor: isReserved || readOnlyMode ? "gray.200" : "teal.300"
-                                  }}
-                                  opacity={isReserved ? 0.7 : 1}
-                                  cursor={isReserved || readOnlyMode ? "not-allowed" : "pointer"}
-                                  onClick={() => !isReserved && !readOnlyMode && toggleStandSelection(stand._id)}
+                              {stand.description && (
+                                <Text mt={3} fontSize="sm" color="gray.600" noOfLines={2}>
+                                  {stand.description}
+                                </Text>
+                              )}
+                              
+                              {isReserved && (
+                                <Badge 
+                                  colorScheme="blue" 
+                                  position="absolute"
+                                  top={2}
+                                  right={2}
                                 >
-                                  <CardBody>
-                                    <Flex justify="space-between" align="center">
-                                      <Box>
-                                        <Heading size="sm" mb={1}>Stand #{stand.number}</Heading>
-                                        <HStack spacing={2} wrap="wrap">
-                                          <Badge>{stand.type}</Badge>
-                                          <Badge colorScheme="blue">{stand.area} m²</Badge>
-                                          <Badge colorScheme="green">${stand.basePrice}</Badge>
-                                        </HStack>
-                                      </Box>
-                                      <Checkbox 
-                                        isChecked={isSelected}
-                                        isDisabled={isReserved || readOnlyMode}
-                                        colorScheme="teal"
-                                        size="lg"
-                                        onChange={() => {}}
-                                      />
-                                    </Flex>
-                                  </CardBody>
-                                </Card>
-                              );
-                            })}
-                          </VStack>
-                        </TabPanel>
-                      </TabPanels>
-                    </Tabs>
+                                  Reserved
+                                </Badge>
+                              )}
+                            </CardBody>
+                          </Card>
+                        );
+                      })}
+                    </SimpleGrid>
                   )}
                 </CardBody>
               </Card>
@@ -656,26 +611,26 @@ const RegistrationWizard = () => {
                       <Icon as={FiSearch} color="gray.400" />
                     </InputLeftElement>
                     <Input 
-                      placeholder="Search equipment by name, type, or description..." 
+                      placeholder="Search equipment by name or description..." 
                       value={equipSearchQuery}
                       onChange={(e) => setEquipSearchQuery(e.target.value)}
                       isDisabled={readOnlyMode}
                     />
                   </InputGroup>
                   
-                  <Text fontWeight="medium" mb={2}>Filter by Type:</Text>
+                  <Text fontWeight="medium" mb={2}>Filter by Category:</Text>
                   <HStack wrap="wrap" spacing={3} mb={4}>
-                    {equipmentTypes.map(type => (
+                    {equipmentCategories.map(category => (
                       <Button
-                        key={type}
+                        key={category}
                         size="sm"
-                        variant={equipTypeFilter === type ? "solid" : "outline"}
-                        colorScheme={equipTypeFilter === type ? "teal" : "gray"}
+                        variant={equipCategoryFilter === category ? "solid" : "outline"}
+                        colorScheme={equipCategoryFilter === category ? "teal" : "gray"}
                         leftIcon={<FiPackage />}
-                        onClick={() => setEquipTypeFilter(prev => prev === type ? '' : type)}
+                        onClick={() => setEquipCategoryFilter(prev => prev === category ? '' : category)}
                         isDisabled={readOnlyMode}
                       >
-                        {type}
+                        {category}
                       </Button>
                     ))}
                   </HStack>
@@ -703,13 +658,13 @@ const RegistrationWizard = () => {
                       <Text>No equipment found matching your criteria</Text>
                     </Alert>
                   ) : (
-                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
+                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={4}>
                       {filteredEquipment.map(item => (
                         <EquipmentCard
                           key={item._id}
                           equipment={item}
                           isSelected={selectedEquipment.includes(item._id)}
-                          quantity={equipmentQuantities[item._id] || 0}
+                          quantity={equipmentQuantities[item._id] || 1}
                           availableQuantity={equipmentAvailability[item._id] || 0}
                           onSelect={toggleEquipmentSelection}
                           onUpdateQuantity={updateEquipmentQuantity}
@@ -882,8 +837,8 @@ const RegistrationWizard = () => {
                                 <Heading size="sm" mb={2}>{item.name}</Heading>
                                 <Text noOfLines={2} mb={2}>{item.description}</Text>
                                 <HStack>
-                                  <Text fontWeight="medium">Type:</Text>
-                                  <Text>{item.type}</Text>
+                                  <Text fontWeight="medium">Category:</Text>
+                                  <Text>{item.category || item.type}</Text>
                                 </HStack>
                                 <HStack mt={1}>
                                   <Text fontWeight="medium">Quantity:</Text>
@@ -1029,6 +984,13 @@ const RegistrationWizard = () => {
           )}
         </Box>
       </Box>
+      
+      {/* Plan Viewer Modal */}
+      <PlanViewerModal
+        isOpen={isPlanViewerOpen}
+        onClose={onPlanViewerClose}
+        planId={planId}
+      />
       
       {/* Confirmation Modal */}
       <Modal isOpen={isConfirmOpen} onClose={onConfirmClose}>

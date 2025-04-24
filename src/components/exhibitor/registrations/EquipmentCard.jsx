@@ -54,16 +54,28 @@ const EquipmentCard = ({
       onClick={isOutOfStock ? undefined : handleSelect}
       position="relative"
     >
-      {/* Image */}
-      <Box position="relative" height="180px">
+      {/* Image - Square format */}
+      <Box position="relative" width="100%" pb="100%" /* 1:1 aspect ratio */>
         <Image 
           src={equipment.imageUrl ? getEquipmentImageUrl(equipment.imageUrl) : undefined} 
           alt={equipment.name}
           objectFit="cover"
-          w="100%"
-          h="100%"
+          position="absolute"
+          top="0"
+          left="0"
+          width="100%"
+          height="100%"
           fallback={
-            <Flex h="100%" align="center" justify="center" bg="gray.100">
+            <Flex 
+              position="absolute"
+              top="0"
+              left="0"
+              width="100%"
+              height="100%"
+              align="center" 
+              justify="center" 
+              bg="gray.100"
+            >
               <Icon as={FiPackage} boxSize={10} color="gray.400" />
             </Flex>
           }
@@ -94,7 +106,7 @@ const EquipmentCard = ({
           px="2"
           borderRadius="full"
         >
-          {equipment.type}
+          {equipment.category || equipment.type}
         </Badge>
       </Box>
       
