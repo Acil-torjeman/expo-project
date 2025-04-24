@@ -3,24 +3,22 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Button, Flex, Heading, Text, SimpleGrid, Card, CardBody, CardHeader,
-  HStack, VStack, Checkbox, Divider, Badge, useToast, Spinner, Alert, AlertIcon,
+  HStack, VStack, Divider, Badge, useToast, Spinner, Alert, AlertIcon,
   AlertTitle, Icon, Breadcrumb, BreadcrumbItem, BreadcrumbLink, 
   Stepper, Step, StepIndicator, StepStatus, StepIcon, StepNumber,
-  StepTitle, StepDescription, StepSeparator, useSteps, Link, InputGroup,
+  StepTitle, StepDescription, StepSeparator, useSteps, InputGroup,
   InputLeftElement, Input, Stat, StatLabel, StatNumber, StatHelpText, Modal, 
   ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, 
   useDisclosure
 } from '@chakra-ui/react';
 import {
   FiChevronRight, FiChevronLeft, FiSearch, FiDownload, FiCheckCircle,
-  FiSquare, FiPackage, FiBox, FiAlertTriangle, FiInfo, FiFile
+  FiSquare, FiPackage, FiBox, FiAlertTriangle, FiInfo, FiExternalLink
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import useRegistrationSelection from '../../hooks/useRegistrationSelection';
-// MODIFICATION 1: Importer planService au lieu de getPlanFileUrl
-import planService from '../../services/plan.service';
+import { getPlanFileUrl } from '../../utils/fileUtils';
 import EquipmentCard from '../../components/exhibitor/registrations/EquipmentCard';
-import PlanViewerModal from '../../components/organizer/plans/PlanViewerModal';
 
 // Define the steps for our wizard
 const steps = [
@@ -33,9 +31,6 @@ const RegistrationWizard = () => {
   const { registrationId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  
-  // Plan viewer modal
-  const { isOpen: isPlanViewerOpen, onOpen: onPlanViewerOpen, onClose: onPlanViewerClose } = useDisclosure();
   
   // Confirmation modal controls
   const { 
@@ -102,19 +97,6 @@ const RegistrationWizard = () => {
       filterEquipment();
     }
   }, [availableEquipment, equipSearchQuery, equipCategoryFilter]);
-
-  // Ajoutons un effet pour afficher des logs sur l'objet registration
-  useEffect(() => {
-    if (registration) {
-      console.log('Registration object:', registration);
-      if (registration.event) {
-        console.log('Event object:', registration.event);
-        if (registration.event.plan) {
-          console.log('Plan object:', registration.event.plan);
-        }
-      }
-    }
-  }, [registration]);
   
   // Filter stands based on search and type
   const filterStands = () => {
@@ -218,6 +200,27 @@ const RegistrationWizard = () => {
     }
   };
   
+  // Get PDF path from registration data
+  const getPdfPath = () => {
+    if (!registration || !registration.event) return null;
+    
+    const event = registration.event;
+    const plan = event.plan;
+    
+    if (!plan) return null;
+    
+    // If plan is an object with pdfPath property
+    if (typeof plan === 'object' && plan.pdfPath) {
+      return getPlanFileUrl(plan.pdfPath);
+    }
+    
+    return null;
+  };
+  
+  // Get PDF URL for the plan
+  const pdfUrl = getPdfPath();
+  const hasPlanPdf = !!pdfUrl;
+  
   // Loading state
   if (loading) {
     return (
@@ -289,40 +292,7 @@ const RegistrationWizard = () => {
     );
   }
   
-  // MODIFICATION 2: Extraire correctement le planId
   const event = registration.event || {};
-  const plan = event.plan || {};
-  
-  // Extraction améliorée de l'ID du plan
-  let planId = null;
-  
-  // Extraire soigneusement l'ID du plan pour s'assurer qu'il s'agit d'une chaîne
-  if (plan) {
-    if (typeof plan === 'object') {
-      if (plan._id) {
-        // Si plan._id existe, assurez-vous de le convertir en chaîne
-        planId = typeof plan._id === 'string' ? plan._id : String(plan._id);
-        console.log('Extracted planId from plan._id:', planId);
-      } else if (plan.id) {
-        // Certains objets ont 'id' au lieu de '_id'
-        planId = typeof plan.id === 'string' ? plan.id : String(plan.id);
-        console.log('Extracted planId from plan.id:', planId);
-      }
-    } else if (typeof plan === 'string') {
-      // Si plan est déjà un identifiant sous forme de chaîne
-      planId = plan;
-      console.log('Plan is already a string ID:', planId);
-    }
-  }
-  
-  // Si nous n'avons pas pu extraire un ID valide, mettre à null
-  if (planId === '[object Object]' || planId === 'undefined') {
-    console.log('Invalid planId detected, setting to null');
-    planId = null;
-  }
-  
-  console.log('Final planId to use:', planId);
-  
   const standTypes = getStandTypes();
   const equipmentCategories = getEquipmentCategories();
   const hasStands = selectedStands.length > 0;
@@ -399,7 +369,7 @@ const RegistrationWizard = () => {
             <>
               <Heading size="md" mb={4}>Select Your Stands</Heading>
               
-              {/* MODIFICATION 3: Section du plan modifiée */}
+              {/* Floor Plan Section */}
               <Card mb={6}>
                 <CardBody>
                   <Alert status="info" borderRadius="md">
@@ -410,38 +380,15 @@ const RegistrationWizard = () => {
                         View the floor plan to see the layout and locations of all stands.
                       </Text>
                       <HStack mt={3} spacing={4}>
-                        {/* Modifier la condition pour afficher le bouton */}
-                        {(planId || (plan && (plan._id || typeof plan === 'string'))) && (
+                       
                           <Button 
-                            leftIcon={<FiFile />} 
+                            leftIcon={<FiExternalLink />} 
                             colorScheme="blue"
-                            onClick={() => {
-                              // Log avant d'ouvrir la modal
-                              console.log("Opening modal with planId:", planId);
-                              onPlanViewerOpen();
-                            }}
+                            onClick={() => window.open(getPlanFileUrl(plan.pdfPath), '_blank')}
                           >
                             View Floor Plan
                           </Button>
-                        )}
-                        
-                        {plan && plan.pdfPath && (
-                          <Link 
-                            href={plan.pdfPath ? planService.getPlanPdfUrl(plan.pdfPath) : '#'} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            isExternal
-                          >
-                            <Button 
-                              leftIcon={<FiDownload />} 
-                              variant="outline"
-                              colorScheme="blue"
-                              isDisabled={!plan.pdfPath}
-                            >
-                              Download Plan
-                            </Button>
-                          </Link>
-                        )}
+                       
                       </HStack>
                     </Box>
                   </Alert>
@@ -1035,13 +982,6 @@ const RegistrationWizard = () => {
           )}
         </Box>
       </Box>
-      
-      {/* MODIFICATION 4: Ajout des logs dans PlanViewerModal */}
-      <PlanViewerModal
-        isOpen={isPlanViewerOpen}
-        onClose={onPlanViewerClose}
-        planId={planId}
-      />
       
       {/* Confirmation Modal */}
       <Modal isOpen={isConfirmOpen} onClose={onConfirmClose}>
