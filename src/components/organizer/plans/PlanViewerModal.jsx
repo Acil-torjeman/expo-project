@@ -38,11 +38,24 @@ const PlanViewerModal = ({ isOpen, onClose, planId }) => {
     const fetchPlan = async () => {
       if (!planId || !isOpen) return;
       
+      // Make sure we're working with a clean string ID
+      const cleanId = typeof planId === 'string' ? planId : String(planId);
+      
+      // Check if ID seems valid (at least looks like a MongoDB ID)
+      if (cleanId === '[object Object]' || cleanId.length < 12) {
+        console.error('Invalid plan ID:', cleanId);
+        setError('Invalid plan ID');
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       setError(null);
       
       try {
-        const data = await planService.getPlanById(planId);
+        console.log('Fetching plan with ID:', cleanId);
+        const data = await planService.getPlanById(cleanId);
+        console.log('Plan data received:', data);
         setPlan(data);
       } catch (err) {
         console.error('Error loading plan:', err);

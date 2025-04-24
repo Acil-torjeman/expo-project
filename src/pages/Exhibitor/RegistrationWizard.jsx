@@ -17,7 +17,8 @@ import {
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import useRegistrationSelection from '../../hooks/useRegistrationSelection';
-import { getPlanFileUrl } from '../../utils/fileUtils';
+// MODIFICATION 1: Importer planService au lieu de getPlanFileUrl
+import planService from '../../services/plan.service';
 import EquipmentCard from '../../components/exhibitor/registrations/EquipmentCard';
 import PlanViewerModal from '../../components/organizer/plans/PlanViewerModal';
 
@@ -101,6 +102,19 @@ const RegistrationWizard = () => {
       filterEquipment();
     }
   }, [availableEquipment, equipSearchQuery, equipCategoryFilter]);
+
+  // Ajoutons un effet pour afficher des logs sur l'objet registration
+  useEffect(() => {
+    if (registration) {
+      console.log('Registration object:', registration);
+      if (registration.event) {
+        console.log('Event object:', registration.event);
+        if (registration.event.plan) {
+          console.log('Plan object:', registration.event.plan);
+        }
+      }
+    }
+  }, [registration]);
   
   // Filter stands based on search and type
   const filterStands = () => {
@@ -275,10 +289,40 @@ const RegistrationWizard = () => {
     );
   }
   
-  // Extract variables for template use
+  // MODIFICATION 2: Extraire correctement le planId
   const event = registration.event || {};
   const plan = event.plan || {};
-  const planId = typeof plan === 'object' && plan._id ? plan._id : plan;
+  
+  // Extraction améliorée de l'ID du plan
+  let planId = null;
+  
+  // Extraire soigneusement l'ID du plan pour s'assurer qu'il s'agit d'une chaîne
+  if (plan) {
+    if (typeof plan === 'object') {
+      if (plan._id) {
+        // Si plan._id existe, assurez-vous de le convertir en chaîne
+        planId = typeof plan._id === 'string' ? plan._id : String(plan._id);
+        console.log('Extracted planId from plan._id:', planId);
+      } else if (plan.id) {
+        // Certains objets ont 'id' au lieu de '_id'
+        planId = typeof plan.id === 'string' ? plan.id : String(plan.id);
+        console.log('Extracted planId from plan.id:', planId);
+      }
+    } else if (typeof plan === 'string') {
+      // Si plan est déjà un identifiant sous forme de chaîne
+      planId = plan;
+      console.log('Plan is already a string ID:', planId);
+    }
+  }
+  
+  // Si nous n'avons pas pu extraire un ID valide, mettre à null
+  if (planId === '[object Object]' || planId === 'undefined') {
+    console.log('Invalid planId detected, setting to null');
+    planId = null;
+  }
+  
+  console.log('Final planId to use:', planId);
+  
   const standTypes = getStandTypes();
   const equipmentCategories = getEquipmentCategories();
   const hasStands = selectedStands.length > 0;
@@ -355,7 +399,7 @@ const RegistrationWizard = () => {
             <>
               <Heading size="md" mb={4}>Select Your Stands</Heading>
               
-              {/* Plan download section */}
+              {/* MODIFICATION 3: Section du plan modifiée */}
               <Card mb={6}>
                 <CardBody>
                   <Alert status="info" borderRadius="md">
@@ -366,11 +410,16 @@ const RegistrationWizard = () => {
                         View the floor plan to see the layout and locations of all stands.
                       </Text>
                       <HStack mt={3} spacing={4}>
-                        {planId && (
+                        {/* Modifier la condition pour afficher le bouton */}
+                        {(planId || (plan && (plan._id || typeof plan === 'string'))) && (
                           <Button 
                             leftIcon={<FiFile />} 
                             colorScheme="blue"
-                            onClick={onPlanViewerOpen}
+                            onClick={() => {
+                              // Log avant d'ouvrir la modal
+                              console.log("Opening modal with planId:", planId);
+                              onPlanViewerOpen();
+                            }}
                           >
                             View Floor Plan
                           </Button>
@@ -378,14 +427,16 @@ const RegistrationWizard = () => {
                         
                         {plan && plan.pdfPath && (
                           <Link 
-                            href={getPlanFileUrl(plan.pdfPath)} 
+                            href={plan.pdfPath ? planService.getPlanPdfUrl(plan.pdfPath) : '#'} 
                             target="_blank" 
                             rel="noopener noreferrer"
+                            isExternal
                           >
                             <Button 
                               leftIcon={<FiDownload />} 
                               variant="outline"
                               colorScheme="blue"
+                              isDisabled={!plan.pdfPath}
                             >
                               Download Plan
                             </Button>
@@ -985,7 +1036,7 @@ const RegistrationWizard = () => {
         </Box>
       </Box>
       
-      {/* Plan Viewer Modal */}
+      {/* MODIFICATION 4: Ajout des logs dans PlanViewerModal */}
       <PlanViewerModal
         isOpen={isPlanViewerOpen}
         onClose={onPlanViewerClose}
