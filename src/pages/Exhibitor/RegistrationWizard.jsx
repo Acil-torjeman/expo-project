@@ -1,5 +1,4 @@
-// src/pages/Exhibitor/RegistrationWizard.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Button, Flex, Heading, Text, SimpleGrid, Card, CardBody, CardHeader,
@@ -9,14 +8,18 @@ import {
   StepTitle, StepDescription, StepSeparator, useSteps, InputGroup,
   InputLeftElement, Input, Stat, StatLabel, StatNumber, StatHelpText, Modal, 
   ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, 
-  useDisclosure
+  useDisclosure, Skeleton
 } from '@chakra-ui/react';
 import {
   FiChevronRight, FiChevronLeft, FiSearch, FiDownload, FiCheckCircle,
-  FiSquare, FiPackage, FiBox, FiAlertTriangle, FiInfo, FiExternalLink
+  FiSquare, FiPackage, FiBox, FiAlertTriangle, FiInfo, FiExternalLink,
+  FiMap
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
-import useRegistrationSelection from '../../hooks/useRegistrationSelection';
+import registrationService from '../../services/registration.service';
+import eventService from '../../services/event.service';
+import equipmentService from '../../services/equipment.service';
+import planService from '../../services/plan.service';
 import { getPlanFileUrl } from '../../utils/fileUtils';
 import EquipmentCard from '../../components/exhibitor/registrations/EquipmentCard';
 
@@ -30,7 +33,6 @@ const steps = [
 const RegistrationWizard = () => {
   const { registrationId } = useParams();
   const navigate = useNavigate();
-  const toast = useToast();
   
   // Confirmation modal controls
   const { 
@@ -45,39 +47,209 @@ const RegistrationWizard = () => {
     count: steps.length,
   });
   
-  // Local state for filters
+  // Registration data states
+  const [registration, setRegistration] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Plan data states
+  const [plan, setPlan] = useState(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  
+  // Stands states
+  const [availableStands, setAvailableStands] = useState([]);
+  const [selectedStands, setSelectedStands] = useState([]);
+  const [standSelectionComplete, setStandSelectionComplete] = useState(false);
   const [standSearchQuery, setStandSearchQuery] = useState('');
   const [standTypeFilter, setStandTypeFilter] = useState('');
+  const [filteredStands, setFilteredStands] = useState([]);
+  
+  // Equipment states
+  const [availableEquipment, setAvailableEquipment] = useState([]);
+  const [selectedEquipment, setSelectedEquipment] = useState([]);
+  const [equipmentQuantities, setEquipmentQuantities] = useState({});
+  const [equipmentAvailability, setEquipmentAvailability] = useState({});
   const [equipSearchQuery, setEquipSearchQuery] = useState('');
   const [equipCategoryFilter, setEquipCategoryFilter] = useState('');
-  const [filteredStands, setFilteredStands] = useState([]);
   const [filteredEquipment, setFilteredEquipment] = useState([]);
   
-  // Use our custom hook for registration selection logic
-  const {
-    registration,
-    availableStands,
-    selectedStands,
-    availableEquipment,
-    selectedEquipment,
-    equipmentQuantities,
-    equipmentAvailability,
-    currentStep,
-    loading,
-    error,
-    isSubmitting,
-    standSelectionComplete,
-    toggleStandSelection,
-    toggleEquipmentSelection,
-    updateEquipmentQuantity,
-    goToNextStep,
-    goToPreviousStep,
-    submitSelections,
-    calculateStandsTotal,
-    calculateEquipmentTotal,
-    calculateTotal,
-    fetchRegistrationData
-  } = useRegistrationSelection(registrationId);
+  const toast = useToast();
+  
+  // Fetch registration details
+  const fetchRegistrationData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // 1. Fetch registration details
+      const registrationData = await registrationService.getRegistrationById(registrationId);
+      setRegistration(registrationData);
+      
+      // 2. Extract already selected stands
+      if (registrationData.stands && registrationData.stands.length > 0) {
+        const standIds = registrationData.stands.map(stand => 
+          typeof stand === 'object' ? stand._id : stand
+        );
+        setSelectedStands(standIds);
+        setStandSelectionComplete(registrationData.standSelectionCompleted || false);
+      }
+      
+      // 3. Extract already selected equipment and quantities
+      if (registrationData.equipment && registrationData.equipment.length > 0) {
+        const equipmentIds = registrationData.equipment.map(item => 
+          typeof item === 'object' ? item._id : item
+        );
+        setSelectedEquipment(equipmentIds);
+        
+        // Extract quantities if available in equipmentQuantities
+        if (registrationData.equipmentQuantities && registrationData.equipmentQuantities.length > 0) {
+          const quantities = {};
+          registrationData.equipmentQuantities.forEach(item => {
+            const equipmentId = typeof item.equipment === 'object' ? 
+              item.equipment._id : item.equipment;
+            quantities[equipmentId] = item.quantity || 1;
+          });
+          setEquipmentQuantities(quantities);
+        } 
+        // Otherwise check metadata for legacy support
+        else if (registrationData.metadata && registrationData.metadata.equipmentQuantities) {
+          setEquipmentQuantities(registrationData.metadata.equipmentQuantities);
+        }
+        // Default to 1 for each selected equipment
+        else {
+          const defaultQuantities = {};
+          equipmentIds.forEach(id => defaultQuantities[id] = 1);
+          setEquipmentQuantities(defaultQuantities);
+        }
+      }
+      
+      // 4. Get event ID
+      const eventId = typeof registrationData.event === 'object' 
+        ? registrationData.event._id 
+        : registrationData.event;
+      
+      if (eventId) {
+        // 5. Fetch event details to check for plan
+        const eventDetails = await eventService.getEventById(eventId);
+        
+        // 6. Fetch plan data if available
+        if (eventDetails.plan) {
+          fetchPlanData(eventDetails.plan);
+        }
+        
+        // 7. Fetch stands for the event
+        const standsData = await eventService.getStands(eventId);
+        
+        // 8. Determine which stands are available or already selected by this user
+        const userSelectedStandIds = registrationData.stands?.map(stand => 
+          typeof stand === 'object' ? stand._id : stand
+        ) || [];
+        
+        const availableOrSelectedStands = standsData.filter(stand => 
+          stand.status === 'available' || userSelectedStandIds.includes(stand._id)
+        );
+        
+        setAvailableStands(availableOrSelectedStands);
+        setFilteredStands(availableOrSelectedStands);
+        
+        // 9. Fetch equipment
+        const equipmentData = await equipmentService.getEventEquipment(eventId);
+        setAvailableEquipment(equipmentData);
+        setFilteredEquipment(equipmentData);
+        
+        // 10. Fetch equipment availability
+        const availability = {};
+        for (const equipment of equipmentData) {
+          try {
+            const availableQuantity = await equipmentService.getAvailableQuantity(equipment._id, eventId);
+            availability[equipment._id] = availableQuantity;
+          } catch (error) {
+            console.error(`Error fetching availability for equipment ${equipment._id}:`, error);
+            availability[equipment._id] = 0;
+          }
+        }
+        setEquipmentAvailability(availability);
+      } else {
+        setError("Registration doesn't have a valid event associated with it.");
+      }
+    } catch (error) {
+      setError(error.message || 'Failed to load data. Please try again.');
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load data. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [registrationId, toast]);
+  
+  // Fetch plan data
+  const fetchPlanData = useCallback(async (planData) => {
+    if (!planData) return;
+    
+    setPlanLoading(true);
+    try {
+      // Determine the plan ID correctly
+      const planId = typeof planData === 'object' && planData._id 
+        ? planData._id 
+        : typeof planData === 'string' 
+          ? planData 
+          : null;
+      
+      if (planId) {
+        const planDetails = await planService.getPlanById(planId);
+        setPlan(planDetails);
+      }
+    } catch (error) {
+      console.error('Error loading plan:', error);
+    } finally {
+      setPlanLoading(false);
+    }
+  }, []);
+  
+  // Load initial data
+  useEffect(() => {
+    fetchRegistrationData();
+  }, [fetchRegistrationData]);
+  
+  // Load saved selections from session storage
+  useEffect(() => {
+    try {
+      // Try to load stand selections
+      const savedStands = sessionStorage.getItem(`standSelection_${registrationId}`);
+      if (savedStands) {
+        const parsedStands = JSON.parse(savedStands);
+        if (Array.isArray(parsedStands)) {
+          setSelectedStands(parsedStands);
+        }
+      }
+      
+      // Try to load equipment selections
+      const savedEquipment = sessionStorage.getItem(`equipmentSelection_${registrationId}`);
+      if (savedEquipment) {
+        const parsedEquipment = JSON.parse(savedEquipment);
+        if (Array.isArray(parsedEquipment)) {
+          setSelectedEquipment(parsedEquipment);
+        }
+      }
+      
+      // Try to load equipment quantities
+      const savedQuantities = sessionStorage.getItem(`equipmentQuantities_${registrationId}`);
+      if (savedQuantities) {
+        const parsedQuantities = JSON.parse(savedQuantities);
+        if (parsedQuantities && typeof parsedQuantities === 'object') {
+          setEquipmentQuantities(parsedQuantities);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading saved selections:", e);
+    }
+  }, [registrationId]);
   
   // Update stepper based on currentStep
   useEffect(() => {
@@ -141,6 +313,174 @@ const RegistrationWizard = () => {
     setFilteredEquipment(filtered);
   };
   
+  // Save selections to session storage
+  const saveSelections = useCallback(() => {
+    try {
+      sessionStorage.setItem(`standSelection_${registrationId}`, JSON.stringify(selectedStands));
+      sessionStorage.setItem(`equipmentSelection_${registrationId}`, JSON.stringify(selectedEquipment));
+      sessionStorage.setItem(`equipmentQuantities_${registrationId}`, JSON.stringify(equipmentQuantities));
+    } catch (e) {
+      console.error("Error saving selections to session storage:", e);
+    }
+  }, [registrationId, selectedStands, selectedEquipment, equipmentQuantities]);
+  
+  // Toggle stand selection
+  const toggleStandSelection = useCallback((standId) => {
+    setSelectedStands(prev => {
+      if (prev.includes(standId)) {
+        return prev.filter(id => id !== standId);
+      } else {
+        return [...prev, standId];
+      }
+    });
+  }, []);
+  
+  // Toggle equipment selection
+  const toggleEquipmentSelection = useCallback((equipmentId) => {
+    setSelectedEquipment(prev => {
+      if (prev.includes(equipmentId)) {
+        // Remove equipment
+        setEquipmentQuantities(prevQuantities => {
+          const newQuantities = { ...prevQuantities };
+          delete newQuantities[equipmentId];
+          return newQuantities;
+        });
+        return prev.filter(id => id !== equipmentId);
+      } else {
+        // Add equipment with default quantity 1
+        setEquipmentQuantities(prevQuantities => ({
+          ...prevQuantities,
+          [equipmentId]: 1
+        }));
+        return [...prev, equipmentId];
+      }
+    });
+  }, []);
+  
+  // Update equipment quantity
+  const updateEquipmentQuantity = useCallback((equipmentId, quantity) => {
+    setEquipmentQuantities(prev => ({
+      ...prev,
+      [equipmentId]: quantity
+    }));
+  }, []);
+  
+  // Move to next step
+  const goToNextStep = useCallback(() => {
+    if (currentStep === 0) {
+      // Validate stand selection before moving to equipment
+      if (selectedStands.length === 0) {
+        toast({
+          title: 'No stands selected',
+          description: 'Please select at least one stand before proceeding',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      // Save stand selection
+      saveSelections();
+      setStandSelectionComplete(true);
+    } else if (currentStep === 1) {
+      // Save equipment selection
+      saveSelections();
+    }
+    
+    setCurrentStep(prev => prev + 1);
+  }, [currentStep, selectedStands, saveSelections, toast]);
+  
+  // Move to previous step
+  const goToPreviousStep = useCallback((stepIndex) => {
+    saveSelections();
+    if (stepIndex !== undefined) {
+      setCurrentStep(stepIndex);
+    } else {
+      setCurrentStep(prev => Math.max(0, prev - 1));
+    }
+  }, [saveSelections]);
+  
+  // Submit final selections
+  const submitSelections = useCallback(async () => {
+    setIsSubmitting(true);
+    
+    try {
+      // First, let's check if the registration is still in approved status
+      const currentRegistration = await registrationService.getRegistrationById(registrationId);
+      
+      if (currentRegistration.status !== 'approved') {
+        throw new Error('Registration must be in approved status to complete');
+      }
+      
+      // 1. First select stands WITHOUT marking selection as complete
+      await registrationService.selectStands(registrationId, {
+        standIds: selectedStands,
+        selectionCompleted: false // Don't mark as complete yet
+      });
+      
+      // 2. Then select equipment WITHOUT marking selection as complete
+      await registrationService.selectEquipment(registrationId, {
+        equipmentIds: selectedEquipment,
+        selectionCompleted: false, // Don't mark as complete yet
+        metadata: {
+          equipmentQuantities: equipmentQuantities
+        }
+      });
+      
+      // 3. Finally, complete the registration - this should update statuses and finalize
+      await registrationService.completeRegistration(registrationId);
+      
+      // 4. Clean up local storage
+      sessionStorage.removeItem(`standSelection_${registrationId}`);
+      sessionStorage.removeItem(`equipmentSelection_${registrationId}`);
+      sessionStorage.removeItem(`equipmentQuantities_${registrationId}`);
+      
+      toast({
+        title: 'Registration Completed',
+        description: 'Your registration has been successfully completed',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      
+      return true;
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit selections',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [registrationId, selectedStands, selectedEquipment, equipmentQuantities, toast]);
+  
+  // Calculate stands total
+  const calculateStandsTotal = useCallback(() => {
+    return availableStands
+      .filter(stand => selectedStands.includes(stand._id))
+      .reduce((total, stand) => total + (stand.basePrice || 0), 0);
+  }, [availableStands, selectedStands]);
+  
+  // Calculate equipment total
+  const calculateEquipmentTotal = useCallback(() => {
+    return availableEquipment
+      .filter(item => selectedEquipment.includes(item._id))
+      .reduce((total, item) => {
+        const quantity = equipmentQuantities[item._id] || 1;
+        return total + (item.price || 0) * quantity;
+      }, 0);
+  }, [availableEquipment, selectedEquipment, equipmentQuantities]);
+  
+  // Calculate total (stands + equipment)
+  const calculateTotal = useCallback(() => {
+    return calculateStandsTotal() + calculateEquipmentTotal();
+  }, [calculateStandsTotal, calculateEquipmentTotal]);
+  
   // Utility functions to get unique types
   const getStandTypes = () => {
     if (!availableStands || availableStands.length === 0) return [];
@@ -164,19 +504,7 @@ const RegistrationWizard = () => {
     return Array.from(categories);
   };
   
-  // Navigation handlers
-  const handleNext = () => {
-    goToNextStep();
-  };
-  
-  const handlePrevious = (stepIndex) => {
-    if (stepIndex !== undefined) {
-      setActiveStep(stepIndex);
-    }
-    goToPreviousStep();
-  };
-  
-  // Open confirmation modal
+  // Handle confirm request
   const handleConfirmRequest = () => {
     if (selectedStands.length === 0) {
       toast({
@@ -199,27 +527,6 @@ const RegistrationWizard = () => {
       navigate(`/exhibitor/registrations/${registrationId}`);
     }
   };
-  
-  // Get PDF path from registration data
-  const getPdfPath = () => {
-    if (!registration || !registration.event) return null;
-    
-    const event = registration.event;
-    const plan = event.plan;
-    
-    if (!plan) return null;
-    
-    // If plan is an object with pdfPath property
-    if (typeof plan === 'object' && plan.pdfPath) {
-      return getPlanFileUrl(plan.pdfPath);
-    }
-    
-    return null;
-  };
-  
-  // Get PDF URL for the plan
-  const pdfUrl = getPdfPath();
-  const hasPlanPdf = !!pdfUrl;
   
   // Loading state
   if (loading) {
@@ -380,7 +687,15 @@ const RegistrationWizard = () => {
                         View the floor plan to see the layout and locations of all stands.
                       </Text>
                       <HStack mt={3} spacing={4}>
-                       
+                        {planLoading ? (
+                          <Button 
+                            leftIcon={<FiMap />} 
+                            colorScheme="blue"
+                            isLoading
+                          >
+                            Loading...
+                          </Button>
+                        ) : plan && plan.pdfPath ? (
                           <Button 
                             leftIcon={<FiExternalLink />} 
                             colorScheme="blue"
@@ -388,7 +703,15 @@ const RegistrationWizard = () => {
                           >
                             View Floor Plan
                           </Button>
-                       
+                        ) : (
+                          <Button 
+                            leftIcon={<FiExternalLink />} 
+                            colorScheme="blue"
+                            isDisabled
+                          >
+                            Floor Plan Not Available
+                          </Button>
+                        )}
                       </HStack>
                     </Box>
                   </Alert>
@@ -461,7 +784,7 @@ const RegistrationWizard = () => {
                       <Text>No stands found matching your criteria</Text>
                     </Alert>
                   ) : (
-                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={4}>
+                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing={4}>
                       {filteredStands.map(stand => {
                         const isSelected = selectedStands.includes(stand._id);
                         const isReserved = stand.status === 'reserved' && !isSelected;
@@ -587,7 +910,7 @@ const RegistrationWizard = () => {
                   colorScheme="teal"
                   size="lg"
                   rightIcon={<FiChevronRight />}
-                  onClick={handleNext}
+                  onClick={goToNextStep}
                   isDisabled={selectedStands.length === 0 || readOnlyMode}
                 >
                   Next: Select Equipment
@@ -656,7 +979,7 @@ const RegistrationWizard = () => {
                       <Text>No equipment found matching your criteria</Text>
                     </Alert>
                   ) : (
-                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={4}>
+                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing={4}>
                       {filteredEquipment.map(item => (
                         <EquipmentCard
                           key={item._id}
@@ -729,7 +1052,7 @@ const RegistrationWizard = () => {
                 <Button
                   variant="outline"
                   leftIcon={<FiChevronLeft />}
-                  onClick={() => handlePrevious(0)}
+                  onClick={() => goToPreviousStep(0)}
                   isDisabled={readOnlyMode}
                 >
                   Back to Stands
@@ -738,7 +1061,7 @@ const RegistrationWizard = () => {
                 <Button
                   colorScheme="teal"
                   rightIcon={<FiChevronRight />}
-                  onClick={handleNext}
+                  onClick={goToNextStep}
                   isDisabled={readOnlyMode}
                 >
                   Next: Review & Confirm
@@ -790,7 +1113,7 @@ const RegistrationWizard = () => {
                             leftIcon={<FiChevronLeft />}
                             variant="outline"
                             size="sm"
-                            onClick={() => handlePrevious(0)}
+                            onClick={() => goToPreviousStep(0)}
                           >
                             Modify Stands
                           </Button>
@@ -809,7 +1132,7 @@ const RegistrationWizard = () => {
                               mt={2}
                               colorScheme="teal"
                               size="sm"
-                              onClick={() => handlePrevious(0)}
+                              onClick={() => goToPreviousStep(0)}
                             >
                               Select Stands
                             </Button>
@@ -860,7 +1183,7 @@ const RegistrationWizard = () => {
                             leftIcon={<FiChevronLeft />}
                             variant="outline"
                             size="sm"
-                            onClick={() => handlePrevious(1)}
+                            onClick={() => goToPreviousStep(1)}
                           >
                             Modify Equipment
                           </Button>
@@ -879,7 +1202,7 @@ const RegistrationWizard = () => {
                               mt={2}
                               variant="outline"
                               size="sm"
-                              onClick={() => handlePrevious(1)}
+                              onClick={() => goToPreviousStep(1)}
                             >
                               Select Equipment
                             </Button>
@@ -947,7 +1270,7 @@ const RegistrationWizard = () => {
                         <Button
                           variant="outline"
                           leftIcon={<FiChevronLeft />}
-                          onClick={() => handlePrevious(1)}
+                          onClick={() => goToPreviousStep(1)}
                         >
                           Back to Equipment
                         </Button>
