@@ -66,6 +66,7 @@ import {
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import registrationService from '../../services/registration.service';
+import equipmentService from '../../services/equipment.service';
 import { getStatusColorScheme, getStatusDisplayText } from '../../constants/registrationConstants';
 import { getEquipmentImageUrl } from '../../utils/fileUtils';
 import PlanViewerModal from '../../components/organizer/plans/PlanViewerModal';
@@ -76,7 +77,9 @@ const RegistrationDetail = () => {
   const toast = useToast();
   
   const [registration, setRegistration] = useState(null);
+  const [equipmentData, setEquipmentData] = useState({});
   const [loading, setLoading] = useState(true);
+  const [equipmentLoading, setEquipmentLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   
   // Plan viewer modal
@@ -93,6 +96,11 @@ const RegistrationDetail = () => {
     try {
       const data = await registrationService.getRegistrationById(registrationId);
       setRegistration(data);
+      
+      // If we have equipment, fetch the details
+      if (data.equipment && data.equipment.length > 0) {
+        fetchEquipmentDetails(data.equipment);
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -103,6 +111,33 @@ const RegistrationDetail = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Fetch equipment details for each equipment ID
+  const fetchEquipmentDetails = async (equipmentIds) => {
+    setEquipmentLoading(true);
+    try {
+      const equipmentMap = {};
+      
+      // For each equipment ID, fetch its details
+      for (const item of equipmentIds) {
+        const equipmentId = typeof item === 'object' ? item._id : item;
+        try {
+          const equipmentDetails = await equipmentService.getEquipmentById(equipmentId);
+          if (equipmentDetails) {
+            equipmentMap[equipmentId] = equipmentDetails;
+          }
+        } catch (err) {
+          console.error(`Failed to fetch details for equipment ${equipmentId}:`, err);
+        }
+      }
+      
+      setEquipmentData(equipmentMap);
+    } catch (error) {
+      console.error('Error fetching equipment details:', error);
+    } finally {
+      setEquipmentLoading(false);
     }
   };
   
@@ -153,6 +188,11 @@ const RegistrationDetail = () => {
     } finally {
       setCancelLoading(false);
     }
+  };
+  
+  // Helper function to get equipment details by ID
+  const getEquipmentById = (equipmentId) => {
+    return equipmentData[equipmentId] || null;
   };
   
   if (loading) {
@@ -533,71 +573,104 @@ const RegistrationDetail = () => {
               <Heading size="md">Selected Equipment</Heading>
             </CardHeader>
             <CardBody>
-              <Table size="sm" mb={4} variant="simple">
-                <Thead>
-                  <Tr>
-                    <Th>Equipment</Th>
-                    <Th>Type</Th>
-                    <Th>Quantity</Th>
-                    <Th isNumeric>Unit Price</Th>
-                    <Th isNumeric>Total</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {registration.equipment.map(item => {
-                    const quantity = registration.equipmentQuantities?.find(eq => {
-                      const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
-                      const itemId = typeof item === 'object' ? item._id : item;
-                      return String(eqId) === String(itemId);
-                    })?.quantity || 1;
-                    
-                    return (
-                      <Tr key={item._id}>
-                        <Td fontWeight="medium">
-                          <HStack>
-                            {item.imageUrl && (
-                              <Box
-                                width="40px"
-                                height="40px"
-                                borderRadius="md"
-                                overflow="hidden"
-                                mr={2}
-                              >
-                                <Image 
-                                  src={getEquipmentImageUrl(item.imageUrl)} 
-                                  boxSize="40px"
-                                  objectFit="cover"
-                                  alt={item.name}
-                                />
-                              </Box>
-                            )}
-                            {item.name}
-                          </HStack>
-                        </Td>
-                        <Td>
-                          <Badge colorScheme="green">{item.type}</Badge>
-                        </Td>
-                        <Td>{quantity}</Td>
-                        <Td isNumeric>${item.price}</Td>
-                        <Td isNumeric>${item.price * quantity}</Td>
-                      </Tr>
-                    );
-                  })}
-                  <Tr fontWeight="bold">
-                    <Td colSpan={4}>Total Equipment Price</Td>
-                    <Td isNumeric>
-                      ${registration.equipment.reduce((total, item) => {
-                        const quantity = registration.equipmentQuantities?.find(eq => {
-                          const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
-                          const itemId = typeof item === 'object' ? item._id : item;
-                          return String(eqId) === String(itemId);
-                        })?.quantity || 1;
-                        return total + ((item.price || 0) * quantity);
-                      }, 0)}
-                    </Td>
-                  </Tr>
-                </Tbody>
-              </Table>
+              {equipmentLoading ? (
+                <Flex justify="center" py={4}>
+                  <Spinner size="md" color="teal.500" />
+                </Flex>
+              ) : (
+                <Table size="sm" mb={4} variant="simple">
+                  <Thead>
+                    <Tr>
+                      <Th>Equipment</Th>
+                      <Th>Category</Th>
+                      <Th>Quantity</Th>
+                      <Th isNumeric>Unit Price</Th>
+                      <Th isNumeric>Total</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {registration.equipment.map(equipmentItem => {
+                      const equipmentId = typeof equipmentItem === 'object' ? equipmentItem._id : equipmentItem;
+                      const equipment = getEquipmentById(equipmentId);
+                      
+                      // Find quantity from equipmentQuantities
+                      const quantity = registration.equipmentQuantities?.find(eq => {
+                        const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
+                        return String(eqId) === String(equipmentId);
+                      })?.quantity || 1;
+                      
+                      // Get price (default to 0 if not found)
+                      const price = equipment?.price || 0;
+                      
+                      return (
+                        <Tr key={equipmentId}>
+                          <Td fontWeight="medium">
+                            <Flex align="center">
+                              {equipment?.imageUrl ? (
+                                <Box
+                                  width="40px"
+                                  height="40px"
+                                  borderRadius="md"
+                                  overflow="hidden"
+                                  mr={3}
+                                  flexShrink={0}
+                                >
+                                  <Image 
+                                    src={getEquipmentImageUrl(equipment.imageUrl)} 
+                                    boxSize="40px"
+                                    objectFit="cover"
+                                    alt={equipment?.name || 'Equipment'}
+                                  />
+                                </Box>
+                              ) : (
+                                <Box
+                                  width="40px"
+                                  height="40px"
+                                  borderRadius="md"
+                                  bg="gray.100"
+                                  mr={3}
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                  flexShrink={0}
+                                >
+                                  <Icon as={FiPackage} color="gray.400" boxSize={5} />
+                                </Box>
+                              )}
+                              <Text noOfLines={2}>{equipment?.name || `Equipment #${equipmentId.substr(-4)}`}</Text>
+                            </Flex>
+                          </Td>
+                          <Td>
+                            <Badge colorScheme="green">
+                              {equipment?.category || 'Other'}
+                            </Badge>
+                          </Td>
+                          <Td>{quantity}</Td>
+                          <Td isNumeric>${price}</Td>
+                          <Td isNumeric>${price * quantity}</Td>
+                        </Tr>
+                      );
+                    })}
+                    <Tr fontWeight="bold">
+                      <Td colSpan={4}>Total Equipment Price</Td>
+                      <Td isNumeric>
+                        ${registration.equipment.reduce((total, equipmentItem) => {
+                          const equipmentId = typeof equipmentItem === 'object' ? equipmentItem._id : equipmentItem;
+                          const equipment = getEquipmentById(equipmentId);
+                          
+                          // Find quantity
+                          const quantity = registration.equipmentQuantities?.find(eq => {
+                            const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
+                            return String(eqId) === String(equipmentId);
+                          })?.quantity || 1;
+                          
+                          return total + ((equipment?.price || 0) * quantity);
+                        }, 0)}
+                      </Td>
+                    </Tr>
+                  </Tbody>
+                </Table>
+              )}
               
               {status === 'approved' && (
                 <Button 
@@ -637,13 +710,17 @@ const RegistrationDetail = () => {
                 <Stat>
                   <StatLabel>Equipment Total</StatLabel>
                   <StatNumber>
-                    ${registration.equipment?.reduce((total, item) => {
+                    ${registration.equipment?.reduce((total, equipmentItem) => {
+                      const equipmentId = typeof equipmentItem === 'object' ? equipmentItem._id : equipmentItem;
+                      const equipment = getEquipmentById(equipmentId);
+                      
+                      // Find quantity
                       const quantity = registration.equipmentQuantities?.find(eq => {
                         const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
-                        const itemId = typeof item === 'object' ? item._id : item;
-                        return String(eqId) === String(itemId);
+                        return String(eqId) === String(equipmentId);
                       })?.quantity || 1;
-                      return total + ((item.price || 0) * quantity);
+                      
+                      return total + ((equipment?.price || 0) * quantity);
                     }, 0) || 0}
                   </StatNumber>
                   <StatHelpText>
@@ -659,13 +736,17 @@ const RegistrationDetail = () => {
                   <StatNumber>
                     ${
                       (registration.stands?.reduce((total, stand) => total + (stand.basePrice || 0), 0) || 0) + 
-                      (registration.equipment?.reduce((total, item) => {
+                      (registration.equipment?.reduce((total, equipmentItem) => {
+                        const equipmentId = typeof equipmentItem === 'object' ? equipmentItem._id : equipmentItem;
+                        const equipment = getEquipmentById(equipmentId);
+                        
+                        // Find quantity
                         const quantity = registration.equipmentQuantities?.find(eq => {
                           const eqId = typeof eq.equipment === 'object' ? eq.equipment._id : eq.equipment;
-                          const itemId = typeof item === 'object' ? item._id : item;
-                          return String(eqId) === String(itemId);
+                          return String(eqId) === String(equipmentId);
                         })?.quantity || 1;
-                        return total + ((item.price || 0) * quantity);
+                        
+                        return total + ((equipment?.price || 0) * quantity);
                       }, 0) || 0)
                     }
                   </StatNumber>

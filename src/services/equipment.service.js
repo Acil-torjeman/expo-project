@@ -51,7 +51,8 @@ class EquipmentService {
       const response = await api.get(`/equipment/${id}`);
       return response.data;
     } catch (error) {
-      this._handleError(error, `Error fetching equipment ${id}`);
+      console.error(`Error fetching equipment ${id}:`, error);
+      // Return null instead of throwing to avoid breaking the UI
       return null;
     }
   }
@@ -119,18 +120,16 @@ class EquipmentService {
     }
   }
 
-    
- //Get available quantity for equipment in an event
- 
-async getAvailableQuantity(equipmentId, eventId) {
-  try {
-    const response = await api.get(`/equipment/${equipmentId}/available-quantity/${eventId}`);
-    return response.data.availableQuantity;
-  } catch (error) {
-    console.error(`Error fetching available quantity for equipment ${equipmentId}:`, error);
-    return 0;
+  // Get available quantity for equipment in an event
+  async getAvailableQuantity(equipmentId, eventId) {
+    try {
+      const response = await api.get(`/equipment/${equipmentId}/available-quantity/${eventId}`);
+      return response.data.availableQuantity;
+    } catch (error) {
+      console.error(`Error fetching available quantity for equipment ${equipmentId}:`, error);
+      return 0;
+    }
   }
-}
 
   // Associate equipment with event
   async associateWithEvent(equipmentId, eventId, data = {}) {

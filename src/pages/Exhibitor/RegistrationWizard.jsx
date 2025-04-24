@@ -6,14 +6,14 @@ import {
   AlertTitle, Icon, Breadcrumb, BreadcrumbItem, BreadcrumbLink, 
   Stepper, Step, StepIndicator, StepStatus, StepIcon, StepNumber,
   StepTitle, StepDescription, StepSeparator, useSteps, InputGroup,
-  InputLeftElement, Input, Stat, StatLabel, StatNumber, StatHelpText, Modal, 
-  ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, 
-  useDisclosure, Skeleton
+  InputLeftElement, Input, Stat, StatLabel, StatNumber, StatHelpText, 
+  Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, 
+  ModalCloseButton, useDisclosure
 } from '@chakra-ui/react';
 import {
-  FiChevronRight, FiChevronLeft, FiSearch, FiDownload, FiCheckCircle,
+  FiChevronRight, FiChevronLeft, FiSearch, FiCheckCircle,
   FiSquare, FiPackage, FiBox, FiAlertTriangle, FiInfo, FiExternalLink,
-  FiMap
+  FiMap, FiLock
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import registrationService from '../../services/registration.service';
@@ -33,6 +33,7 @@ const steps = [
 const RegistrationWizard = () => {
   const { registrationId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   
   // Confirmation modal controls
   const { 
@@ -59,7 +60,7 @@ const RegistrationWizard = () => {
   const [planLoading, setPlanLoading] = useState(false);
   
   // Stands states
-  const [availableStands, setAvailableStands] = useState([]);
+  const [allStands, setAllStands] = useState([]);
   const [selectedStands, setSelectedStands] = useState([]);
   const [standSelectionComplete, setStandSelectionComplete] = useState(false);
   const [standSearchQuery, setStandSearchQuery] = useState('');
@@ -74,8 +75,6 @@ const RegistrationWizard = () => {
   const [equipSearchQuery, setEquipSearchQuery] = useState('');
   const [equipCategoryFilter, setEquipCategoryFilter] = useState('');
   const [filteredEquipment, setFilteredEquipment] = useState([]);
-  
-  const toast = useToast();
   
   // Fetch registration details
   const fetchRegistrationData = useCallback(async () => {
@@ -103,7 +102,7 @@ const RegistrationWizard = () => {
         );
         setSelectedEquipment(equipmentIds);
         
-        // Extract quantities if available in equipmentQuantities
+        // Extract quantities if available
         if (registrationData.equipmentQuantities && registrationData.equipmentQuantities.length > 0) {
           const quantities = {};
           registrationData.equipmentQuantities.forEach(item => {
@@ -139,27 +138,17 @@ const RegistrationWizard = () => {
           fetchPlanData(eventDetails.plan);
         }
         
-        // 7. Fetch stands for the event
+        // 7. Fetch ALL stands for the event, not just available ones
         const standsData = await eventService.getStands(eventId);
+        setAllStands(standsData);
+        setFilteredStands(standsData);
         
-        // 8. Determine which stands are available or already selected by this user
-        const userSelectedStandIds = registrationData.stands?.map(stand => 
-          typeof stand === 'object' ? stand._id : stand
-        ) || [];
-        
-        const availableOrSelectedStands = standsData.filter(stand => 
-          stand.status === 'available' || userSelectedStandIds.includes(stand._id)
-        );
-        
-        setAvailableStands(availableOrSelectedStands);
-        setFilteredStands(availableOrSelectedStands);
-        
-        // 9. Fetch equipment
+        // 8. Fetch equipment
         const equipmentData = await equipmentService.getEventEquipment(eventId);
         setAvailableEquipment(equipmentData);
         setFilteredEquipment(equipmentData);
         
-        // 10. Fetch equipment availability
+        // 9. Fetch equipment availability
         const availability = {};
         for (const equipment of equipmentData) {
           try {
@@ -258,10 +247,10 @@ const RegistrationWizard = () => {
   
   // Filter stands when dependencies change
   useEffect(() => {
-    if (availableStands && availableStands.length > 0) {
+    if (allStands && allStands.length > 0) {
       filterStands();
     }
-  }, [availableStands, standSearchQuery, standTypeFilter]);
+  }, [allStands, standSearchQuery, standTypeFilter]);
   
   // Filter equipment when dependencies change
   useEffect(() => {
@@ -272,7 +261,7 @@ const RegistrationWizard = () => {
   
   // Filter stands based on search and type
   const filterStands = () => {
-    let filtered = [...availableStands];
+    let filtered = [...allStands];
     
     // Apply search filter
     if (standSearchQuery.trim() !== '') {
@@ -461,10 +450,10 @@ const RegistrationWizard = () => {
   
   // Calculate stands total
   const calculateStandsTotal = useCallback(() => {
-    return availableStands
+    return allStands
       .filter(stand => selectedStands.includes(stand._id))
       .reduce((total, stand) => total + (stand.basePrice || 0), 0);
-  }, [availableStands, selectedStands]);
+  }, [allStands, selectedStands]);
   
   // Calculate equipment total
   const calculateEquipmentTotal = useCallback(() => {
@@ -483,9 +472,9 @@ const RegistrationWizard = () => {
   
   // Utility functions to get unique types
   const getStandTypes = () => {
-    if (!availableStands || availableStands.length === 0) return [];
+    if (!allStands || allStands.length === 0) return [];
     const types = new Set();
-    availableStands.forEach(stand => {
+    allStands.forEach(stand => {
       if (stand.type) {
         types.add(stand.type);
       }
@@ -528,6 +517,9 @@ const RegistrationWizard = () => {
     }
   };
   
+  // Check if registration is in read-only mode
+  const readOnlyMode = registration?.status === 'completed';
+  
   // Loading state
   if (loading) {
     return (
@@ -548,11 +540,6 @@ const RegistrationWizard = () => {
             <BreadcrumbItem>
               <BreadcrumbLink onClick={() => navigate('/exhibitor/registrations')}>
                 Registrations
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbItem>
-              <BreadcrumbLink onClick={() => navigate(`/exhibitor/registrations/${registrationId}`)}>
-                Registration Details
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbItem isCurrentPage>
@@ -578,7 +565,6 @@ const RegistrationWizard = () => {
     );
   }
   
-  // Check if registration exists and is in proper status
   if (!registration) {
     return (
       <DashboardLayout>
@@ -604,11 +590,9 @@ const RegistrationWizard = () => {
   const equipmentCategories = getEquipmentCategories();
   const hasStands = selectedStands.length > 0;
   const hasEquipment = selectedEquipment.length > 0;
-  const isRegistrationCompleted = registration.status === 'completed';
-  const readOnlyMode = isRegistrationCompleted;
   
   // Selected item details for display
-  const selectedStandDetails = availableStands.filter(stand => selectedStands.includes(stand._id));
+  const selectedStandDetails = allStands.filter(stand => selectedStands.includes(stand._id));
   const selectedEquipmentDetails = availableEquipment.filter(item => selectedEquipment.includes(item._id));
   
   return (
@@ -752,33 +736,33 @@ const RegistrationWizard = () => {
                   
                   <Divider mb={4} />
                   
-                  <Text fontWeight="medium" mb={2}>
-                    {filteredStands && filteredStands.length} stand{filteredStands && filteredStands.length !== 1 ? 's' : ''} available
-                  </Text>
+                  <HStack spacing={3}>
+                    <Text fontWeight="medium">
+                      {filteredStands?.length || 0} stands shown
+                    </Text>
+                    <Badge colorScheme="green">
+                      {filteredStands?.filter(s => s.status === 'available').length || 0} available
+                    </Badge>
+                    <Badge colorScheme="red">
+                      {filteredStands?.filter(s => s.status === 'reserved' && !selectedStands.includes(s._id)).length || 0} reserved
+                    </Badge>
+                    <Badge colorScheme="blue">
+                      {selectedStands.length} selected
+                    </Badge>
+                  </HStack>
                 </CardBody>
               </Card>
               
               {/* Stands List */}
               <Card mb={6}>
                 <CardHeader pb={0}>
-                  <Heading size="sm">Available Stands</Heading>
+                  <Heading size="sm">All Stands</Heading>
                   <Text color="gray.500" fontSize="sm" mt={1}>
-                    Select the stands you wish to reserve for this event
+                    Select stands that are available. Reserved stands are shown but cannot be selected.
                   </Text>
                 </CardHeader>
                 <CardBody>
-                  {!availableStands || availableStands.length === 0 ? (
-                    <Alert status="info" borderRadius="md">
-                      <AlertIcon />
-                      <Box>
-                        <AlertTitle>No stands available</AlertTitle>
-                        <Text>
-                          There are no stands available for this event. This may be because the organizer 
-                          hasn't created any stands yet, or all stands are already reserved.
-                        </Text>
-                      </Box>
-                    </Alert>
-                  ) : !filteredStands || filteredStands.length === 0 ? (
+                  {!filteredStands || filteredStands.length === 0 ? (
                     <Alert status="info" borderRadius="md">
                       <AlertIcon />
                       <Text>No stands found matching your criteria</Text>
@@ -787,22 +771,23 @@ const RegistrationWizard = () => {
                     <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing={4}>
                       {filteredStands.map(stand => {
                         const isSelected = selectedStands.includes(stand._id);
-                        const isReserved = stand.status === 'reserved' && !isSelected;
+                        const isReservedByOthers = stand.status === 'reserved' && !isSelected;
                         
                         return (
                           <Card 
                             key={stand._id} 
                             variant="outline"
-                            borderColor={isSelected ? "teal.500" : "gray.200"}
-                            bg={isSelected ? "teal.50" : "white"}
+                            borderColor={isSelected ? "teal.500" : isReservedByOthers ? "red.200" : "gray.200"}
+                            bg={isSelected ? "teal.50" : isReservedByOthers ? "red.50" : "white"}
                             _hover={{ 
-                              boxShadow: isReserved || readOnlyMode ? "none" : "md",
-                              borderColor: isReserved || readOnlyMode ? "gray.200" : "teal.300"
+                              boxShadow: isReservedByOthers || readOnlyMode ? "none" : "md",
+                              borderColor: isReservedByOthers || readOnlyMode ? isReservedByOthers ? "red.200" : "gray.200" : "teal.300"
                             }}
-                            opacity={isReserved ? 0.7 : 1}
-                            cursor={isReserved || readOnlyMode ? "not-allowed" : "pointer"}
-                            onClick={() => !isReserved && !readOnlyMode && toggleStandSelection(stand._id)}
+                            opacity={isReservedByOthers ? 0.7 : 1}
+                            cursor={isReservedByOthers || readOnlyMode ? "not-allowed" : "pointer"}
+                            onClick={() => !isReservedByOthers && !readOnlyMode && toggleStandSelection(stand._id)}
                             position="relative"
+                            transition="all 0.2s"
                           >
                             {isSelected && (
                               <Icon 
@@ -811,6 +796,17 @@ const RegistrationWizard = () => {
                                 top={2} 
                                 right={2} 
                                 color="teal.500"
+                                boxSize={5}
+                              />
+                            )}
+                            
+                            {isReservedByOthers && (
+                              <Icon 
+                                as={FiLock} 
+                                position="absolute" 
+                                top={2} 
+                                right={2} 
+                                color="red.500"
                                 boxSize={5}
                               />
                             )}
@@ -830,6 +826,19 @@ const RegistrationWizard = () => {
                                   <Text fontWeight="medium">Price:</Text>
                                   <Text>${stand.basePrice}</Text>
                                 </HStack>
+                                
+                                {stand.features && (
+                                  <Box mt={2}>
+                                    <Text fontWeight="medium">Features:</Text>
+                                    <HStack mt={1} wrap="wrap">
+                                      {stand.features.map((feature, index) => (
+                                        <Badge key={index} colorScheme="blue" fontSize="xs">
+                                          {feature}
+                                        </Badge>
+                                      ))}
+                                    </HStack>
+                                  </Box>
+                                )}
                               </VStack>
                               
                               {stand.description && (
@@ -838,16 +847,12 @@ const RegistrationWizard = () => {
                                 </Text>
                               )}
                               
-                              {isReserved && (
-                                <Badge 
-                                  colorScheme="blue" 
-                                  position="absolute"
-                                  top={2}
-                                  right={2}
-                                >
-                                  Reserved
-                                </Badge>
-                              )}
+                              <Badge 
+                                colorScheme={isReservedByOthers ? "red" : isSelected ? "blue" : "green"}
+                                mt={2}
+                              >
+                                {isReservedByOthers ? "Reserved" : isSelected ? "Selected" : "Available"}
+                              </Badge>
                             </CardBody>
                           </Card>
                         );
@@ -959,7 +964,7 @@ const RegistrationWizard = () => {
                   <Divider mb={4} />
                   
                   <Text fontWeight="medium" mb={2}>
-                    {filteredEquipment && filteredEquipment.length} item{filteredEquipment && filteredEquipment.length !== 1 ? 's' : ''} available
+                    {filteredEquipment?.length || 0} items available
                   </Text>
                 </CardBody>
               </Card>
@@ -1102,6 +1107,19 @@ const RegistrationWizard = () => {
                                     <Text fontWeight="medium">Price:</Text>
                                     <Text>${stand.basePrice}</Text>
                                   </HStack>
+                                  
+                                  {stand.features && stand.features.length > 0 && (
+                                    <Box mt={1}>
+                                      <Text fontWeight="medium">Features:</Text>
+                                      <HStack mt={1} wrap="wrap">
+                                        {stand.features.map((feature, index) => (
+                                          <Badge key={index} colorScheme="blue" fontSize="xs">
+                                            {feature}
+                                          </Badge>
+                                        ))}
+                                      </HStack>
+                                    </Box>
+                                  )}
                                 </VStack>
                               </CardBody>
                             </Card>
