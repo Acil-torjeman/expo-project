@@ -1,3 +1,4 @@
+
 // src/pages/Exhibitor/RegistrationWizard.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -17,7 +18,8 @@ import {
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import useRegistrationSelection from '../../hooks/useRegistrationSelection';
-import { getPlanFileUrl, getEquipmentImageUrl } from '../../utils/fileUtils';
+import { getPlanFileUrl } from '../../utils/fileUtils';
+import EquipmentCard from '../../components/exhibitor/registrations/EquipmentCard';
 
 // Define the steps for our wizard
 const steps = [
@@ -59,6 +61,8 @@ const RegistrationWizard = () => {
     selectedStands,
     availableEquipment,
     selectedEquipment,
+    equipmentQuantities,
+    equipmentAvailability,
     currentStep,
     loading,
     error,
@@ -66,6 +70,7 @@ const RegistrationWizard = () => {
     standSelectionComplete,
     toggleStandSelection,
     toggleEquipmentSelection,
+    updateEquipmentQuantity,
     goToNextStep,
     goToPreviousStep,
     submitSelections,
@@ -125,7 +130,7 @@ const RegistrationWizard = () => {
       const query = equipSearchQuery.toLowerCase();
       filtered = filtered.filter(item => 
         item.name.toLowerCase().includes(query) ||
-        item.type.toLowerCase().includes(query) ||
+        (item.type && item.type.toLowerCase().includes(query)) ||
         (item.description && item.description.toLowerCase().includes(query))
       );
     }
@@ -142,14 +147,22 @@ const RegistrationWizard = () => {
   const getStandTypes = () => {
     if (!availableStands || availableStands.length === 0) return [];
     const types = new Set();
-    availableStands.forEach(stand => types.add(stand.type));
+    availableStands.forEach(stand => {
+      if (stand.type) {
+        types.add(stand.type);
+      }
+    });
     return Array.from(types);
   };
   
   const getEquipmentTypes = () => {
     if (!availableEquipment || availableEquipment.length === 0) return [];
     const types = new Set();
-    availableEquipment.forEach(item => types.add(item.type));
+    availableEquipment.forEach(item => {
+      if (item.type) {
+        types.add(item.type);
+      }
+    });
     return Array.from(types);
   };
   
@@ -690,132 +703,20 @@ const RegistrationWizard = () => {
                       <Text>No equipment found matching your criteria</Text>
                     </Alert>
                   ) : (
-                    <Tabs variant="enclosed" colorScheme="teal">
-                      <TabList>
-                        <Tab>Grid View</Tab>
-                        <Tab>List View</Tab>
-                      </TabList>
-                      
-                      <TabPanels>
-                        {/* Grid View */}
-                        <TabPanel px={0}>
-                          <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
-                            {filteredEquipment.map(item => {
-                              const isSelected = selectedEquipment.includes(item._id);
-                              
-                              return (
-                                <Card 
-                                  key={item._id} 
-                                  variant="outline"
-                                  borderColor={isSelected ? "teal.500" : "gray.200"}
-                                  bg={isSelected ? "teal.50" : "white"}
-                                  _hover={{ 
-                                    boxShadow: readOnlyMode ? "none" : "md",
-                                    borderColor: readOnlyMode ? "gray.200" : "teal.300"
-                                  }}
-                                  cursor={readOnlyMode ? "not-allowed" : "pointer"}
-                                  onClick={() => !readOnlyMode && toggleEquipmentSelection(item._id)}
-                                  position="relative"
-                                  overflow="hidden"
-                                >
-                                  {isSelected && (
-                                    <Icon 
-                                      as={FiCheckCircle} 
-                                      position="absolute" 
-                                      top={2} 
-                                      right={2} 
-                                      color="teal.500"
-                                      boxSize={5}
-                                      zIndex={1}
-                                    />
-                                  )}
-                                  
-                                  {item.imagePath && (
-                                    <Box height="120px" overflow="hidden">
-                                      <Image 
-                                        src={getEquipmentImageUrl(item.imagePath)} 
-                                        alt={item.name}
-                                        objectFit="cover"
-                                        w="100%"
-                                        h="100%"
-                                        fallback={
-                                          <Flex h="100%" align="center" justify="center" bg="gray.100">
-                                            <Icon as={FiPackage} boxSize={8} color="gray.400" />
-                                          </Flex>
-                                        }
-                                      />
-                                    </Box>
-                                  )}
-                                  
-                                  <CardBody>
-                                    <Heading size="sm" mb={2}>{item.name}</Heading>
-                                    <Badge mb={2}>{item.type}</Badge>
-                                    
-                                    {item.description && (
-                                      <Text fontSize="sm" color="gray.600" noOfLines={2} mb={3}>
-                                        {item.description}
-                                      </Text>
-                                    )}
-                                    
-                                    <Text fontWeight="bold" color="teal.600">
-                                      ${item.price || 0}
-                                    </Text>
-                                  </CardBody>
-                                </Card>
-                              );
-                            })}
-                          </SimpleGrid>
-                        </TabPanel>
-                        
-                        {/* List View */}
-                        <TabPanel px={0}>
-                          <VStack spacing={2} align="stretch">
-                            {filteredEquipment.map(item => {
-                              const isSelected = selectedEquipment.includes(item._id);
-                              
-                              return (
-                                <Card 
-                                  key={item._id} 
-                                  variant="outline"
-                                  borderColor={isSelected ? "teal.500" : "gray.200"}
-                                  bg={isSelected ? "teal.50" : "white"}
-                                  _hover={{ 
-                                    boxShadow: readOnlyMode ? "none" : "md",
-                                    borderColor: readOnlyMode ? "gray.200" : "teal.300"
-                                  }}
-                                  cursor={readOnlyMode ? "not-allowed" : "pointer"}
-                                  onClick={() => !readOnlyMode && toggleEquipmentSelection(item._id)}
-                                >
-                                  <CardBody>
-                                    <Flex justify="space-between" align="center">
-                                      <Box>
-                                        <Heading size="sm" mb={1}>{item.name}</Heading>
-                                        <HStack spacing={2} mb={1}>
-                                          <Badge>{item.type}</Badge>
-                                          <Badge colorScheme="green">${item.price || 0}</Badge>
-                                        </HStack>
-                                        {item.description && (
-                                          <Text fontSize="sm" color="gray.600" noOfLines={1}>
-                                            {item.description}
-                                          </Text>
-                                        )}
-                                      </Box>
-                                      <Checkbox 
-                                        isChecked={isSelected}
-                                        colorScheme="teal"
-                                        size="lg"
-                                        isDisabled={readOnlyMode}
-                                        onChange={() => {}}
-                                      />
-                                    </Flex>
-                                  </CardBody>
-                                </Card>
-                              );
-                            })}
-                          </VStack>
-                        </TabPanel>
-                      </TabPanels>
-                    </Tabs>
+                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
+                      {filteredEquipment.map(item => (
+                        <EquipmentCard
+                          key={item._id}
+                          equipment={item}
+                          isSelected={selectedEquipment.includes(item._id)}
+                          quantity={equipmentQuantities[item._id] || 0}
+                          availableQuantity={equipmentAvailability[item._id] || 0}
+                          onSelect={toggleEquipmentSelection}
+                          onUpdateQuantity={updateEquipmentQuantity}
+                          isReadOnly={readOnlyMode}
+                        />
+                      ))}
+                    </SimpleGrid>
                   )}
                 </CardBody>
               </Card>
@@ -843,8 +744,11 @@ const RegistrationWizard = () => {
                       <VStack align="stretch" spacing={2} maxH="200px" overflowY="auto" mb={4}>
                         {selectedEquipmentDetails.map(item => (
                           <HStack key={item._id} justify="space-between" p={2} bg="gray.50" borderRadius="md">
-                            <Text fontWeight="medium">{item.name}</Text>
-                            <Text>${item.price || 0}</Text>
+                            <HStack>
+                              <Text fontWeight="medium">{item.name}</Text>
+                              <Badge colorScheme="blue">{equipmentQuantities[item._id] || 1}x</Badge>
+                            </HStack>
+                            <Text>${(item.price || 0) * (equipmentQuantities[item._id] || 1)}</Text>
                           </HStack>
                         ))}
                       </VStack>
@@ -982,8 +886,16 @@ const RegistrationWizard = () => {
                                   <Text>{item.type}</Text>
                                 </HStack>
                                 <HStack mt={1}>
-                                  <Text fontWeight="medium">Price:</Text>
+                                  <Text fontWeight="medium">Quantity:</Text>
+                                  <Text>{equipmentQuantities[item._id] || 1}</Text>
+                                </HStack>
+                                <HStack mt={1}>
+                                  <Text fontWeight="medium">Unit Price:</Text>
                                   <Text>${item.price}</Text>
+                                </HStack>
+                                <HStack mt={1}>
+                                  <Text fontWeight="medium">Total:</Text>
+                                  <Text>${(item.price || 0) * (equipmentQuantities[item._id] || 1)}</Text>
                                 </HStack>
                               </CardBody>
                             </Card>

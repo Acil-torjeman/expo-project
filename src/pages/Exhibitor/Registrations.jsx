@@ -61,8 +61,10 @@ const Registrations = () => {
   };
   
   const handleProceedToSelection = (registrationId) => {
-    navigate(`/exhibitor/registrations/${registrationId}/stands`);
+    // FIXED: Use the correct path for selection wizard
+    navigate(`/exhibitor/registrations/${registrationId}/selection`);
   };
+
   
   return (
     <DashboardLayout title="My Registrations">

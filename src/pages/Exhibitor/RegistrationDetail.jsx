@@ -98,8 +98,17 @@ const RegistrationDetail = () => {
     });
   };
   
+  const isWithin10Days = (startDate) => {
+    if (!startDate) return false;
+    const today = new Date();
+    const eventStart = new Date(startDate);
+    const differenceInTime = eventStart.getTime() - today.getTime();
+    const differenceInDays = differenceInTime / (1000 * 3600 * 24);
+    return differenceInDays <= 10;
+  };
+  
   const handleProceedToSelection = () => {
-    // Updated to use the unified selection wizard
+    // Updated to use the correct path for the selection wizard
     navigate(`/exhibitor/registrations/${registrationId}/selection`);
   };
   
@@ -164,6 +173,9 @@ const RegistrationDetail = () => {
   const status = registration.status;
   const exhibitor = registration.exhibitor || {};
   const company = exhibitor.company || {};
+  
+  // Check if within 10 days of event start
+  const within10Days = isWithin10Days(event.startDate);
   
   return (
     <DashboardLayout>
@@ -383,42 +395,57 @@ const RegistrationDetail = () => {
               )}
               
               {/* Action Buttons */}
-              <Box mt={6}>
-                {status === 'approved' && (
-                  <Button 
-                    colorScheme="teal" 
-                    width="full" 
-                    rightIcon={<FiChevronRight />}
-                    onClick={handleProceedToSelection}
-                  >
-                    Proceed to Selection
-                  </Button>
-                )}
-                
-                {status === 'completed' && (
-                  <Button 
-                    colorScheme="blue" 
-                    width="full" 
-                    leftIcon={<FiCreditCard />}
-                    isDisabled
-                  >
-                    View Invoice
-                  </Button>
-                )}
-                
-                {(status === 'pending' || status === 'approved') && (
-                  <Button 
-                    colorScheme="red" 
-                    variant="outline" 
-                    width="full" 
-                    leftIcon={<FiAlertTriangle />}
-                    onClick={onCancelOpen}
-                    mt={4}
-                  >
-                    Cancel Registration
-                  </Button>
-                )}
-              </Box>
+                <Box mt={6}>
+                  {status === 'approved' && (
+                    <Button 
+                      colorScheme="teal" 
+                      width="full" 
+                      rightIcon={<FiChevronRight />}
+                      onClick={() => navigate(`/exhibitor/registrations/${registrationId}/selection`)}
+                    >
+                      {/* FIXED: Correct path for selection */}
+                      Proceed to Selection
+                    </Button>
+                  )}
+                  
+                  {status === 'completed' && (
+                    <Button 
+                      colorScheme="blue" 
+                      width="full" 
+                      leftIcon={<FiCreditCard />}
+                      isDisabled
+                    >
+                      View Invoice
+                    </Button>
+                  )}
+                  
+                  {/* Show cancel button for all statuses except cancelled, with 10-day check */}
+                  {status !== 'cancelled' && (
+                    <>
+                      <Button 
+                        colorScheme="red" 
+                        variant="outline" 
+                        width="full" 
+                        leftIcon={<FiAlertTriangle />}
+                        onClick={onCancelOpen}
+                        mt={4}
+                        isDisabled={isWithin10Days(event.startDate)}
+                      >
+                        Cancel Registration
+                      </Button>
+                      
+                      {/* Show warning if within 10 days */}
+                      {isWithin10Days(event.startDate) && (
+                        <Alert status="warning" mt={2} size="sm">
+                          <AlertIcon />
+                          <Text fontSize="sm">
+                            Cancellation is not available within 10 days of the event start.
+                          </Text>
+                        </Alert>
+                      )}
+                    </>
+                  )}
+                </Box>
             </CardBody>
           </Card>
         </SimpleGrid>
@@ -454,7 +481,7 @@ const RegistrationDetail = () => {
                 ))}
               </SimpleGrid>
               
-              {registration.standSelectionCompleted && status !== 'completed' && (
+              {status === 'approved' && (
                 <Button 
                   mt={4} 
                   colorScheme="teal" 
@@ -494,7 +521,7 @@ const RegistrationDetail = () => {
                 ))}
               </SimpleGrid>
               
-              {registration.equipmentSelectionCompleted && status !== 'completed' && (
+              {status === 'approved' && (
                 <Button 
                   mt={4} 
                   colorScheme="teal" 
@@ -568,6 +595,20 @@ const RegistrationDetail = () => {
                 </Text>
               </Box>
             </Alert>
+            
+            {status === 'completed' && (
+              <Alert status="error" borderRadius="md" mt={4}>
+                <AlertIcon />
+                <Box>
+                  <AlertTitle>Important</AlertTitle>
+                  <Text>
+                    Canceling a completed registration will release all your selected stands and equipment.
+                    Any pending payments will be canceled, but already processed payments may require
+                    contacting the organizer for a refund.
+                  </Text>
+                </Box>
+              </Alert>
+            )}
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" mr={3} onClick={onCancelClose}>
