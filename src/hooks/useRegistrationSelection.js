@@ -266,26 +266,30 @@ export default function useRegistrationSelection(registrationId) {
     setIsSubmitting(true);
     
     try {
-      // 1. Select stands with completed flag
+      // First, let's check if the registration is still in approved status
+      const currentRegistration = await registrationService.getRegistrationById(registrationId);
+      
+      if (currentRegistration.status !== 'approved') {
+        throw new Error('Registration must be in approved status to complete');
+      }
+      
+      // 1. First select stands WITHOUT marking selection as complete
       await registrationService.selectStands(registrationId, {
         standIds: selectedStands,
-        selectionCompleted: true
+        selectionCompleted: false // Don't mark as complete yet
       });
       
-      // 2. Prepare equipment data with quantities
-      const equipmentSelections = selectedEquipment.map(equipmentId => ({
-        equipmentId,
-        quantity: equipmentQuantities[equipmentId] || 1
-      }));
-      
-      // 3. Select equipment with quantities in metadata
+      // 2. Then select equipment WITHOUT marking selection as complete
       await registrationService.selectEquipment(registrationId, {
         equipmentIds: selectedEquipment,
-        selectionCompleted: true,
+        selectionCompleted: false, // Don't mark as complete yet
         metadata: {
           equipmentQuantities: equipmentQuantities
         }
       });
+      
+      // 3. Finally, complete the registration - this should update statuses and finalize
+      await registrationService.completeRegistration(registrationId);
       
       // 4. Clean up local storage
       sessionStorage.removeItem(`standSelection_${registrationId}`);
