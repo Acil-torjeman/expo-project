@@ -77,22 +77,20 @@ const EventDetail = () => {
   const mutedColor = useColorModeValue('gray.600', 'gray.400');
 
   // Check registration status specifically
-  const checkRegistrationStatus = useCallback(async () => {
-    if (!isAuthenticated || !exhibitor || !exhibitor._id) return null;
-    
+  const checkRegistration = async () => {
+    setRegistrationStatusLoading(true);
     try {
-      const registration = await registrationService.checkRegistrationStatus(eventId);
-      if (registration) {
-        setUserRegistration(registration);
-        setHasRegistered(true);
-        return registration;
-      }
-      return null;
+      const result = await registrationService.checkEventRegistration(eventId);
+      setIsRegistered(result.registered);
+      setRegistrationData(result.registration);
     } catch (error) {
       console.error('Error checking registration status:', error);
-      return null;
+      setIsRegistered(false);
+      setRegistrationData(null);
+    } finally {
+      setRegistrationStatusLoading(false);
     }
-  }, [eventId, isAuthenticated, exhibitor]);
+  };
   
   // Fetch event details
   useEffect(() => {

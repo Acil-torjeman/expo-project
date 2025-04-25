@@ -16,7 +16,8 @@ import RegistrationWizard from '../pages/Exhibitor/RegistrationWizard';
 import ExhibitorStands from '../pages/exhibitor/Stands';
 import ExhibitorEquipment from '../pages/exhibitor/Equipment';
 import ExhibitorInvoices from '../pages/exhibitor/Invoices';
-import ExhibitorPayments from '../pages/exhibitor/Payments';
+import InvoiceDetails from '../pages/Exhibitor/InvoiceDetails';
+import ExhibitorPayments from '../pages/Exhibitor/Payments';
 import ExhibitorNotifications from '../pages/exhibitor/Notifications';
 import ExhibitorSettings from '../pages/exhibitor/Settings';
 
@@ -83,6 +84,16 @@ const ExhibitorRoutes = () => {
         element={
           <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
             <RegistrationWizard />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Invoice Details */}
+      <Route 
+        path="invoices/:invoiceId" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <InvoiceDetails />
           </ProtectedRoute>
         } 
       />

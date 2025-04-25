@@ -22,6 +22,7 @@ import equipmentService from '../../services/equipment.service';
 import planService from '../../services/plan.service';
 import { getPlanFileUrl } from '../../utils/fileUtils';
 import EquipmentCard from '../../components/exhibitor/registrations/EquipmentCard';
+import invoiceService from '../../services/invoice.service';
 
 // Define the steps for our wizard
 const steps = [
@@ -510,12 +511,47 @@ const RegistrationWizard = () => {
   
   // Final confirmation handler
   const handleConfirmation = async () => {
-    const success = await submitSelections();
-    onConfirmClose();
-    if (success) {
-      navigate(`/exhibitor/registrations/${registrationId}`);
+    setIsSubmitting(true);
+    
+    try {
+      // Compléter l'inscription
+      const success = await submitSelections();
+      onConfirmClose();
+      
+      if (success) {
+        toast({
+          title: 'Registration Completed',
+          description: 'Your registration has been successfully completed. Generating invoice...',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        
+        // Naviguer d'abord vers la page d'inscription
+        navigate(`/exhibitor/registrations/${registrationId}`);
+        
+        // Tenter de générer la facture en arrière-plan
+        try {
+          await invoiceService.generateInvoice(registrationId);
+          console.log('Invoice generated in background');
+        } catch (invoiceError) {
+          console.error('Background invoice generation failed:', invoiceError);
+          // Pas besoin d'afficher un toast ici car l'utilisateur est déjà redirigé
+        }
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to complete registration',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      onConfirmClose();
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }
   
   // Check if registration is in read-only mode
   const readOnlyMode = registration?.status === 'completed';
