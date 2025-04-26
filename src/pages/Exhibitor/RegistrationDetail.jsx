@@ -848,15 +848,6 @@ const RegistrationDetail = () => {
                 </Stat>
               </SimpleGrid>
               
-              <Button 
-                mt={2} 
-                colorScheme="blue" 
-                width="full" 
-                leftIcon={<FiCreditCard />}
-                isDisabled
-              >
-                View Invoice & Payment Details
-              </Button>
             </CardBody>
           </Card>
         )}

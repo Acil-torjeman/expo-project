@@ -1,8 +1,4 @@
-// src/config/api.config.js
-// Centralized API configuration
-
-// Get API URL from environment variable or use default
-const API_URL =  import.meta.env.VITE_API_BASE_URL;
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default {
   API_URL,
@@ -11,6 +7,7 @@ export default {
     EVENTS: '/uploads/events',
     EQUIPMENT: '/uploads/equipment-images',
     PLANS: '/uploads/plans',
-    LOGOS: '/uploads/organization-logos'
+    LOGOS: '/uploads/organization-logos',
+    INVOICES: '/uploads/invoices'
   }
 };

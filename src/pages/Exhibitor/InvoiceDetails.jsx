@@ -262,12 +262,12 @@ const InvoiceDetails = () => {
                 colorScheme="blue" 
                 width="full" 
                 leftIcon={<Icon as={FiCreditCard} />}
-                onClick={() => navigate('/exhibitor/payments')}
+                onClick={() => navigate(`/exhibitor/payment/${invoiceId}`)}
                 isDisabled={status === 'paid' || status === 'cancelled'}
                 mb={4}
-              >
+                >
                 {status === 'paid' ? 'Payment Complete' : 'Proceed to Payment'}
-              </Button>
+                </Button>
               
               {status === 'paid' && (
                 <Alert status="success" borderRadius="md">
@@ -351,8 +351,8 @@ const InvoiceDetails = () => {
           <CardHeader>
             <Heading size="md">Invoice Document</Heading>
           </CardHeader>
-          <CardBody p={0} height="600px">
-            <InvoiceViewer invoiceId={invoiceId} />
+          <CardBody p={6} height="100px">
+           <InvoiceViewer pdfPath={invoice?.pdfPath} />
           </CardBody>
         </Card>
         

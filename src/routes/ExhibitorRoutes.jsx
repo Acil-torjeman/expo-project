@@ -17,7 +17,9 @@ import ExhibitorStands from '../pages/exhibitor/Stands';
 import ExhibitorEquipment from '../pages/exhibitor/Equipment';
 import ExhibitorInvoices from '../pages/exhibitor/Invoices';
 import InvoiceDetails from '../pages/Exhibitor/InvoiceDetails';
-import ExhibitorPayments from '../pages/Exhibitor/Payments';
+import PaymentProcessor from '../pages/Exhibitor/PaymentProcessor';
+import PaymentSuccess from '../pages/Exhibitor/PaymentSuccess';
+import PaymentCancel from '../pages/Exhibitor/PaymentCancel';
 import ExhibitorNotifications from '../pages/exhibitor/Notifications';
 import ExhibitorSettings from '../pages/exhibitor/Settings';
 
@@ -98,6 +100,16 @@ const ExhibitorRoutes = () => {
         } 
       />
       
+      {/* Payment Processor */}
+      <Route 
+        path="payment/:invoiceId" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <PaymentProcessor />
+          </ProtectedRoute>
+        } 
+      />
+      
       {/* Stands */}
       <Route 
         path="stands" 
@@ -128,16 +140,6 @@ const ExhibitorRoutes = () => {
         } 
       />
       
-      {/* Payments */}
-      <Route 
-        path="payments" 
-        element={
-          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
-            <ExhibitorPayments />
-          </ProtectedRoute>
-        } 
-      />
-      
       {/* Messages */}
       <Route 
         path="messages" 
@@ -164,6 +166,34 @@ const ExhibitorRoutes = () => {
         element={
           <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
             <ExhibitorSettings />
+          </ProtectedRoute>
+        } 
+      />
+
+            {/* Payment Routes */}
+            <Route 
+        path="payment/:invoiceId" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <PaymentProcessor />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="payments/success" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <PaymentSuccess />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="payments/cancel" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
+            <PaymentCancel />
           </ProtectedRoute>
         } 
       />

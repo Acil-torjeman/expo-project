@@ -1,4 +1,3 @@
-// src/components/exhibitor/invoices/InvoiceViewer.jsx
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -12,38 +11,38 @@ import {
   useColorModeValue,
 } from '@chakra-ui/react';
 import { FiDownload, FiExternalLink } from 'react-icons/fi';
-import invoiceService from '../../../services/invoice.service';
+import { getInvoicePdfUrl } from '../../../utils/fileUtils';
 
-const InvoiceViewer = ({ invoiceId }) => {
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const borderColor = useColorModeValue('gray.200', 'gray.700');
+const InvoiceViewer = ({ invoiceId, pdfPath }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  
+  // Create PDF URL using the file path
+  const pdfUrl = pdfPath ? getInvoicePdfUrl(pdfPath) : '';
+  
+  // Handle downloads
+  const handleDownload = () => {
+    window.open(pdfUrl, '_blank');
+  };
+  
+  // Check if PDF exists
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
     
-    // Create PDF URL
-    const pdfUrl = invoiceId ? invoiceService.getInvoicePdfUrl(invoiceId) : '';
-    
-    // Handle downloads
-    const handleDownload = () => {
-      window.open(pdfUrl, '_blank');
-    };
-    
-    // Check if PDF exists
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        setLoading(false);
-      }, 1500);
-      
-      return () => clearTimeout(timer);
-    }, [invoiceId]);
-    
-    if (!invoiceId) {
-      return (
-        <Alert status="error" borderRadius="md">
-          <AlertIcon />
-          <Text>Invoice not found</Text>
-        </Alert>
-      );
-    }
+    return () => clearTimeout(timer);
+  }, [pdfPath]);
+  
+  if (!pdfPath) {
+    return (
+      <Alert status="error" borderRadius="md">
+        <AlertIcon />
+        <Text>Invoice PDF not found</Text>
+      </Alert>
+    );
+  }
   
   return (
     <Box
@@ -66,14 +65,7 @@ const InvoiceViewer = ({ invoiceId }) => {
       >
         <Text fontWeight="medium">Invoice PDF Viewer</Text>
         <Flex>
-          <Button
-            size="sm"
-            leftIcon={<Icon as={FiDownload} />}
-            onClick={handleDownload}
-            mr={2}
-          >
-            Download
-          </Button>
+
           <Button
             size="sm"
             leftIcon={<Icon as={FiExternalLink} />}
@@ -106,17 +98,17 @@ const InvoiceViewer = ({ invoiceId }) => {
             </Button>
           </Flex>
         ) : (
-          <iframe
-            src={`${pdfUrl}#toolbar=1`}
-            style={{
-              width: '100%',
-              height: '100%',
-              border: 'none',
-              display: 'block',
-            }}
-            title="Invoice PDF"
-            onError={() => setError(true)}
-          />
+                <iframe
+                src={`${pdfUrl}#toolbar=1`}
+                style={{
+                    width: '100%',
+                    height: '80vh', // 80% de la hauteur de la fenêtre du navigateur
+                    border: 'none',
+                    display: 'block',
+                }}
+                title="Invoice PDF"
+                onError={() => setError(true)}
+                />
         )}
       </Box>
     </Box>
