@@ -36,13 +36,10 @@ const usePayment = () => {
         window.location.href = paymentData.paymentUrl;
         return paymentData;
       } else {
-        console.error('No payment URL in response:', paymentData);
-        throw new Error('No payment URL returned from server. Check backend configuration.');
+        throw new Error('No payment URL returned from server');
       }
     } catch (error) {
       const errorMessage = error.message || 'Failed to initialize payment';
-      console.error('Payment initiation error:', errorMessage);
-      
       setError(errorMessage);
       toast({
         title: 'Payment Error',
@@ -68,7 +65,7 @@ const usePayment = () => {
     try {
       const result = await paymentService.capturePayment(orderId);
       
-      if (result.success) {
+      if (result && result.success) {
         toast({
           title: 'Payment Successful',
           description: 'Your payment has been processed successfully',
@@ -106,13 +103,6 @@ const usePayment = () => {
       return payments;
     } catch (error) {
       setError(error.message || 'Failed to fetch payments');
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to fetch payments',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
       return [];
     } finally {
       setLoading(false);

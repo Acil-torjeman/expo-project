@@ -12,19 +12,19 @@ class PaymentService {
     try {
       console.log('Creating payment for invoice:', invoiceId);
       
-      // Prepare payload - only include returnUrl/cancelUrl if provided
+      // Prepare payload
       const payload = { invoiceId };
       if (returnUrl) payload.returnUrl = returnUrl;
       if (cancelUrl) payload.cancelUrl = cancelUrl;
       
       const response = await api.post('/payments', payload);
       
-      // Log success for debugging
+      // Log success
       console.log('Payment created successfully:', response.data);
+      
       return response.data;
     } catch (error) {
-      console.error('Error details:', error.response?.data);
-      this._handleError(error, 'Failed to create payment');
+      console.error('Error creating payment:', error.message);
       throw error;
     }
   }
@@ -39,7 +39,7 @@ class PaymentService {
       const response = await api.get(`/payments/capture?orderId=${orderId}`);
       return response.data;
     } catch (error) {
-      this._handleError(error, 'Failed to capture payment');
+      console.error('Error capturing payment:', error.message);
       throw error;
     }
   }
@@ -52,36 +52,9 @@ class PaymentService {
       const response = await api.get('/payments/my-payments');
       return response.data;
     } catch (error) {
-      this._handleError(error, 'Failed to fetch your payments');
+      console.error('Error fetching payments:', error.message);
       return [];
     }
-  }
-
-  /**
-   * Handle errors consistently
-   */
-  _handleError(error, defaultMessage) {
-    console.error(`${defaultMessage}:`, error);
-    
-    let errorMessage = defaultMessage;
-    
-    if (error.response) {
-      if (error.response.status === 403) {
-        errorMessage = "You don't have permission to perform this action";
-      } else if (error.response.data) {
-        if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
-        } else if (error.response.data.message) {
-          if (Array.isArray(error.response.data.message)) {
-            errorMessage = error.response.data.message.join(', ');
-          } else {
-            errorMessage = error.response.data.message;
-          }
-        }
-      }
-    }
-    
-    throw new Error(errorMessage);
   }
 }
 
