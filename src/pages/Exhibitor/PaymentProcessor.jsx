@@ -1,6 +1,6 @@
 // src/pages/Exhibitor/PaymentProcessor.jsx
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -24,17 +24,11 @@ import invoiceService from '../../services/invoice.service';
 const PaymentProcessor = () => {
   const { invoiceId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { loading: paymentLoading, error: paymentError, initiatePayment, checkPaymentStatus } = usePayment();
+  const { loading: paymentLoading, error: paymentError, initiatePayment } = usePayment();
   
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [processingStatus, setProcessingStatus] = useState('');
-  
-  // Parse query parameters
-  const queryParams = new URLSearchParams(location.search);
-  const paypalOrderId = queryParams.get('token');
   
   // Background gradient
   const bgGradient = useColorModeValue(
@@ -64,37 +58,7 @@ const PaymentProcessor = () => {
     }
   }, [invoiceId]);
   
-  // Check for PayPal return
-  useEffect(() => {
-    const handlePayPalReturn = async () => {
-      // If PayPal order ID is in the URL, process the payment
-      if (paypalOrderId) {
-        setProcessingStatus('processing');
-        
-        try {
-          const result = await checkPaymentStatus(paypalOrderId);
-          
-          if (result.success) {
-            setProcessingStatus('success');
-            // Wait a moment to show success message before redirecting
-            setTimeout(() => {
-              navigate(`/exhibitor/invoices/${invoiceId}`);
-            }, 2000);
-          } else {
-            setProcessingStatus('failed');
-          }
-        } catch (error) {
-          setProcessingStatus('failed');
-        }
-      }
-    };
-    
-    if (paypalOrderId) {
-      handlePayPalReturn();
-    }
-  }, [paypalOrderId, checkPaymentStatus, navigate, invoiceId]);
-  
-  // Initiate payment - test for backend errors
+  // Initiate payment
   const handlePayNow = async () => {
     try {
       // Create base URL for the frontend routes
@@ -104,11 +68,9 @@ const PaymentProcessor = () => {
       
       console.log('Initiating payment with URLs:', { returnUrl, cancelUrl });
       
-      // Pass explicit returnUrl and cancelUrl to override backend config if needed
       await initiatePayment(invoiceId, returnUrl, cancelUrl);
     } catch (err) {
       console.error('Payment initiation error:', err);
-      // Error is already handled in the hook
     }
   };
   
@@ -187,30 +149,7 @@ const PaymentProcessor = () => {
               <Divider />
             </VStack>
             
-            {/* Payment status */}
-            {/* Payment status */}
-            {processingStatus === 'processing' && (
-              <Alert status="info" borderRadius="md" mb={6}>
-                <AlertIcon />
-                <Text>Processing your payment...</Text>
-                <Spinner ml={2} size="sm" />
-              </Alert>
-            )}
-            
-            {processingStatus === 'success' && (
-              <Alert status="success" borderRadius="md" mb={6}>
-                <AlertIcon />
-                <Text>Payment successful! Redirecting to invoice...</Text>
-              </Alert>
-            )}
-            
-            {processingStatus === 'failed' && (
-              <Alert status="error" borderRadius="md" mb={6}>
-                <AlertIcon />
-                <Text>Payment processing failed. Please try again.</Text>
-              </Alert>
-            )}
-            
+            {/* Payment error message */}
             {paymentError && (
               <Alert status="error" borderRadius="md" mb={6}>
                 <AlertIcon />
@@ -226,7 +165,7 @@ const PaymentProcessor = () => {
             
             {/* Payment actions */}
             <VStack spacing={4} width="full" mt={4}>
-              {!paypalOrderId && invoice.status !== 'paid' && (
+              {invoice.status !== 'paid' && (
                 <Button
                   colorScheme="blue"
                   size="lg"
@@ -235,7 +174,7 @@ const PaymentProcessor = () => {
                   onClick={handlePayNow}
                   isLoading={paymentLoading}
                 >
-                  Pay Now with PayPal
+                  Pay Now with Card
                 </Button>
               )}
               
@@ -257,10 +196,10 @@ const PaymentProcessor = () => {
             </VStack>
           </Box>
           
-          {/* PayPal info */}
+          {/* Stripe info */}
           <Text mt={8} fontSize="sm" color="gray.500" textAlign="center">
-            Payments are securely processed through PayPal.
-            You will be redirected to PayPal to complete your payment.
+            Payments are securely processed through Stripe.
+            You will be redirected to a secure checkout page to complete your payment.
           </Text>
         </Flex>
       </Container>

@@ -30,9 +30,9 @@ const usePayment = () => {
       
       console.log('Payment data received:', paymentData);
       
-      // If PayPal payment URL is returned, redirect to it
+      // If Stripe checkout URL is returned, redirect to it
       if (paymentData && paymentData.paymentUrl) {
-        console.log('Redirecting to PayPal URL:', paymentData.paymentUrl);
+        console.log('Redirecting to Stripe checkout:', paymentData.paymentUrl);
         window.location.href = paymentData.paymentUrl;
         return paymentData;
       } else {
@@ -55,15 +55,15 @@ const usePayment = () => {
   };
 
   /**
-   * Check payment status and capture payment
-   * @param {string} orderId - PayPal order ID
+   * Check payment status
+   * @param {string} sessionId - Stripe session ID
    */
-  const checkPaymentStatus = async (orderId) => {
+  const checkPaymentStatus = async (sessionId) => {
     setLoading(true);
     setError(null);
     
     try {
-      const result = await paymentService.capturePayment(orderId);
+      const result = await paymentService.checkPaymentStatus(sessionId);
       
       if (result && result.success) {
         toast({

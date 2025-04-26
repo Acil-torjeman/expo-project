@@ -34,15 +34,15 @@ const PaymentSuccess = () => {
   // Card background
   const cardBg = useColorModeValue('white', 'gray.800');
   
-  // Get PayPal order ID from URL query parameters
-  const paypalOrderId = searchParams.get('token');
+  // Get Stripe session ID from URL query parameters
+  const sessionId = searchParams.get('session_id');
   
   useEffect(() => {
     const processPayment = async () => {
-      if (paypalOrderId) {
+      if (sessionId) {
         try {
-          console.log('Processing payment with order ID:', paypalOrderId);
-          const result = await checkPaymentStatus(paypalOrderId);
+          console.log('Processing payment with session ID:', sessionId);
+          const result = await checkPaymentStatus(sessionId);
           
           console.log('Payment processing result:', result);
           
@@ -66,12 +66,12 @@ const PaymentSuccess = () => {
           console.error('Payment processing error:', err);
         }
       } else {
-        console.warn('No PayPal order ID found in URL');
+        console.warn('No Stripe session ID found in URL');
       }
     };
     
     processPayment();
-  }, [paypalOrderId, checkPaymentStatus, navigate]);
+  }, [sessionId, checkPaymentStatus, navigate]);
   
   return (
     <Box minH="100vh" bgGradient={bgGradient} py={10}>

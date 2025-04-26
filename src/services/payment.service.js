@@ -18,10 +18,6 @@ class PaymentService {
       if (cancelUrl) payload.cancelUrl = cancelUrl;
       
       const response = await api.post('/payments', payload);
-      
-      // Log success
-      console.log('Payment created successfully:', response.data);
-      
       return response.data;
     } catch (error) {
       console.error('Error creating payment:', error.message);
@@ -30,16 +26,16 @@ class PaymentService {
   }
 
   /**
-   * Capture a payment after PayPal approval
-   * @param {string} orderId - PayPal order ID
+   * Check payment status
+   * @param {string} sessionId - Stripe session ID
    */
-  async capturePayment(orderId) {
+  async checkPaymentStatus(sessionId) {
     try {
-      console.log('Capturing payment for order:', orderId);
-      const response = await api.get(`/payments/capture?orderId=${orderId}`);
+      console.log('Checking payment status for session:', sessionId);
+      const response = await api.get(`/payments/status?session_id=${sessionId}`);
       return response.data;
     } catch (error) {
-      console.error('Error capturing payment:', error.message);
+      console.error('Error checking payment status:', error.message);
       throw error;
     }
   }
