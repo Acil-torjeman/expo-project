@@ -47,6 +47,7 @@ import {
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import invoiceService from '../../services/invoice.service';
+import paymentService from '../../services/payment.service'; // Add payment service
 import InvoiceViewer from '../../components/exhibitor/invoices/InvoiceViewer';
 
 const InvoiceDetails = () => {
@@ -57,6 +58,7 @@ const InvoiceDetails = () => {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false); // Add payment loading state
   
   // Fetch invoice details
   useEffect(() => {
@@ -95,6 +97,36 @@ const InvoiceDetails = () => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  // Handle payment directly
+  const handlePayment = async () => {
+    setPaymentLoading(true);
+    try {
+      // Create base URL for the frontend routes
+      const baseUrl = `${window.location.protocol}//${window.location.host}`;
+      const returnUrl = `${baseUrl}/exhibitor/payments/success`;
+      const cancelUrl = `${baseUrl}/exhibitor/payments/cancel`;
+      
+      const paymentData = await paymentService.createPayment(invoiceId, returnUrl, cancelUrl);
+      
+      if (paymentData && paymentData.paymentUrl) {
+        // Redirect to Stripe checkout directly
+        window.location.href = paymentData.paymentUrl;
+      } else {
+        throw new Error('No payment URL returned from server');
+      }
+    } catch (error) {
+      toast({
+        title: 'Payment Error',
+        description: error.message || 'Failed to initialize payment',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setPaymentLoading(false);
+    }
   };
   
   if (loading) {
@@ -262,12 +294,14 @@ const InvoiceDetails = () => {
                 colorScheme="blue" 
                 width="full" 
                 leftIcon={<Icon as={FiCreditCard} />}
-                onClick={() => navigate(`/exhibitor/payment/${invoiceId}`)}
+                onClick={handlePayment}
+                isLoading={paymentLoading}
+                loadingText="Processing..."
                 isDisabled={status === 'paid' || status === 'cancelled'}
                 mb={4}
-                >
+              >
                 {status === 'paid' ? 'Payment Complete' : 'Proceed to Payment'}
-                </Button>
+              </Button>
               
               {status === 'paid' && (
                 <Alert status="success" borderRadius="md">
@@ -352,7 +386,7 @@ const InvoiceDetails = () => {
             <Heading size="md">Invoice Document</Heading>
           </CardHeader>
           <CardBody p={6} height="100px">
-           <InvoiceViewer pdfPath={invoice?.pdfPath} />
+            <InvoiceViewer pdfPath={invoice?.pdfPath} />
           </CardBody>
         </Card>
         
@@ -369,7 +403,8 @@ const InvoiceDetails = () => {
           <Button 
             colorScheme="blue" 
             leftIcon={<Icon as={FiCreditCard} />}
-            onClick={() => navigate('/exhibitor/payments')}
+            onClick={handlePayment}
+            isLoading={paymentLoading}
             isDisabled={status === 'paid' || status === 'cancelled'}
           >
             {status === 'paid' ? 'View Payment History' : 'Proceed to Payment'}

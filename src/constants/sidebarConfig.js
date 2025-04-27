@@ -32,7 +32,7 @@ const sidebarConfig = {
     { 
       path: '/admin/dashboard', 
       icon: FiHome, 
-      label: 'Dashboard',
+      label: 'Home',
     },
     { 
       path: '/admin/accounts', 
@@ -44,40 +44,9 @@ const sidebarConfig = {
       icon: FiTrash2, 
       label: 'Trash',
     },
-    { 
-      path: '/admin/messages', 
-      icon: FiMessageCircle, 
-      label: 'Messages',
-    },
-    { 
-      path: '/admin/notifications', 
-      icon: FiBell, 
-      label: 'Notifications',
-    },
-    { 
-      path: '/admin/settings', 
-      icon: FiSettings, 
-      label: 'Settings',
-      children: [
-        {
-          path: '/admin/settings/profile',
-          label: 'Profile Settings'
-        },
-        {
-          path: '/admin/settings/application',
-          label: 'Application Settings'
-        },
-        {
-          path: '/admin/settings/security',
-          label: 'Security'
-        }
-      ]
-    },
-    { 
-      path: '/admin/help', 
-      icon: FiHelpCircle, 
-      label: 'Help',
-    },
+ 
+
+
   ],
   
   // Éléments de la sidebar pour les organisateurs
@@ -85,17 +54,12 @@ const sidebarConfig = {
     { 
       path: '/organizer/dashboard', 
       icon: FiHome, 
-      label: 'Dashboard',
+      label: 'Home',
     },
     { 
       path: '/organizer/events', 
       icon: FiCalendar, 
       label: 'Events',
-    },
-    { 
-      path: '/organizer/exhibitors', 
-      icon: FiUsers, 
-      label: 'Exhibitors',
     },
     { 
       path: '/organizer/plans', 
@@ -117,25 +81,11 @@ const sidebarConfig = {
       icon: FiFileText, 
       label: 'Invoices',
     },
-    { 
-      path: '/organizer/messages', 
-      icon: FiMessageCircle, 
-      label: 'Messages',
-    },
-    { 
-      path: '/organizer/notifications', 
-      icon: FiBell, 
-      label: 'Notifications',
-    },
+    
     { 
       path: '/organizer/analytics', 
       icon: FiBarChart2, 
       label: 'Analytics',
-    },
-    { 
-      path: '/organizer/settings', 
-      icon: FiSettings, 
-      label: 'Settings',
     },
   ],
   
@@ -144,7 +94,7 @@ const sidebarConfig = {
     { 
       path: '/exhibitor/dashboard', 
       icon: FiHome, 
-      label: 'Dashboard',
+      label: 'Home',
     },
     { 
       path: '/exhibitor/events', 
@@ -156,16 +106,7 @@ const sidebarConfig = {
       icon: FiClipboard, 
       label: 'My Registrations',
     },
-    { 
-      path: '/exhibitor/stands', 
-      icon: FiGrid, 
-      label: 'My Stands',
-    },
-    { 
-      path: '/exhibitor/equipment', 
-      icon: FiBox, 
-      label: 'Equipment',
-    },
+    
     { 
       path: '/exhibitor/invoices', 
       icon: FiFileText, 
@@ -176,21 +117,7 @@ const sidebarConfig = {
       icon: FiCreditCard, 
       label: 'Payments',
     },
-    { 
-      path: '/exhibitor/messages', 
-      icon: FiMessageCircle, 
-      label: 'Messages',
-    },
-    { 
-      path: '/exhibitor/notifications', 
-      icon: FiBell, 
-      label: 'Notifications',
-    },
-    { 
-      path: '/exhibitor/settings', 
-      icon: FiSettings, 
-      label: 'Settings',
-    },
+
   ]
 };
 

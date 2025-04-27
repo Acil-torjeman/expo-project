@@ -32,7 +32,8 @@ class PaymentService {
   async checkPaymentStatus(sessionId) {
     try {
       console.log('Checking payment status for session:', sessionId);
-      const response = await api.get(`/payments/status?session_id=${sessionId}`);
+      // Update the endpoint to use the new route
+      const response = await api.get(`/payments/payment-status?session_id=${sessionId}`);
       return response.data;
     } catch (error) {
       console.error('Error checking payment status:', error.message);

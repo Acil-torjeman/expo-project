@@ -1,4 +1,4 @@
-// src/pages/exhibitor/Dashboard.jsx
+// src/pages/exhibitor/Home.jsx
 import React from 'react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 

@@ -17,7 +17,6 @@ import ExhibitorStands from '../pages/exhibitor/Stands';
 import ExhibitorEquipment from '../pages/exhibitor/Equipment';
 import ExhibitorInvoices from '../pages/exhibitor/Invoices';
 import InvoiceDetails from '../pages/Exhibitor/InvoiceDetails';
-import PaymentProcessor from '../pages/Exhibitor/PaymentProcessor';
 import PaymentSuccess from '../pages/Exhibitor/PaymentSuccess';
 import PaymentCancel from '../pages/Exhibitor/PaymentCancel';
 import ExhibitorNotifications from '../pages/exhibitor/Notifications';
@@ -100,16 +99,6 @@ const ExhibitorRoutes = () => {
         } 
       />
       
-      {/* Payment Processor */}
-      <Route 
-        path="payment/:invoiceId" 
-        element={
-          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
-            <PaymentProcessor />
-          </ProtectedRoute>
-        } 
-      />
-      
       {/* Stands */}
       <Route 
         path="stands" 
@@ -170,16 +159,7 @@ const ExhibitorRoutes = () => {
         } 
       />
 
-            {/* Payment Routes */}
-            <Route 
-        path="payment/:invoiceId" 
-        element={
-          <ProtectedRoute requiredRole={UserRole.EXHIBITOR}>
-            <PaymentProcessor />
-          </ProtectedRoute>
-        } 
-      />
-      
+      {/* Payment Routes - Only success and cancel, no processor page */}
       <Route 
         path="payments/success" 
         element={

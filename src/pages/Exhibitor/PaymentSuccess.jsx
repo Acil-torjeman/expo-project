@@ -1,5 +1,5 @@
 // src/pages/Exhibitor/PaymentSuccess.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -25,6 +25,9 @@ const PaymentSuccess = () => {
   const [processingComplete, setProcessingComplete] = useState(false);
   const [invoiceId, setInvoiceId] = useState(null);
   
+
+  const paymentChecked = useRef(false);
+  
   // Background gradient
   const bgGradient = useColorModeValue(
     'linear(to-br, green.50, teal.50)',
@@ -34,17 +37,19 @@ const PaymentSuccess = () => {
   // Card background
   const cardBg = useColorModeValue('white', 'gray.800');
   
-  // Get Stripe session ID from URL query parameters
+
   const sessionId = searchParams.get('session_id');
   
   useEffect(() => {
     const processPayment = async () => {
-      if (sessionId) {
+
+      if (sessionId && !paymentChecked.current) {
+
+        paymentChecked.current = true;
+        
         try {
           console.log('Processing payment with session ID:', sessionId);
           const result = await checkPaymentStatus(sessionId);
-          
-          console.log('Payment processing result:', result);
           
           if (result && result.success) {
             setProcessingComplete(true);
@@ -65,8 +70,6 @@ const PaymentSuccess = () => {
         } catch (err) {
           console.error('Payment processing error:', err);
         }
-      } else {
-        console.warn('No Stripe session ID found in URL');
       }
     };
     
