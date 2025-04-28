@@ -1,5 +1,5 @@
 // src/pages/Exhibitor/Invoices.jsx
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -15,6 +15,9 @@ import {
   Icon,
   useDisclosure,
   VStack,
+  Alert,
+  AlertIcon,
+  useToast,
 } from '@chakra-ui/react';
 import { 
   FiFileText, 
@@ -42,6 +45,7 @@ const MotionBox = motion.div;
 
 const ExhibitorInvoices = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   
   // Use filter modal disclosure
   const {
@@ -54,6 +58,7 @@ const ExhibitorInvoices = () => {
   const {
     invoices,
     loading,
+    error,
     filters,
     selectedInvoices,
     paginationInfo,
@@ -67,6 +72,42 @@ const ExhibitorInvoices = () => {
     getActiveFiltersCount,
     isAllSelected,
   } = useInvoices();
+  
+  // Gestion des paiements
+  const [paymentProcessing, setPaymentProcessing] = useState({});
+  
+  const handlePayment = useCallback(async (invoiceId) => {
+    try {
+      setPaymentProcessing(prev => ({ ...prev, [invoiceId]: true }));
+      
+      // Import dynamique du service de paiement
+      const paymentService = await import('../../services/payment.service').then(m => m.default);
+      
+      // Créer le paiement et obtenir l'URL de redirection
+      const baseUrl = `${window.location.protocol}//${window.location.host}`;
+      const returnUrl = `${baseUrl}/exhibitor/payments/success`;
+      const cancelUrl = `${baseUrl}/exhibitor/payments/cancel`;
+      
+      const paymentData = await paymentService.createPayment(invoiceId, returnUrl, cancelUrl);
+      
+      if (paymentData && paymentData.paymentUrl) {
+        // Rediriger vers la page de paiement Stripe
+        window.location.href = paymentData.paymentUrl;
+      } else {
+        throw new Error('No payment URL returned from server');
+      }
+    } catch (error) {
+      toast({
+        title: 'Payment Error',
+        description: error.message || 'Failed to initialize payment',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setPaymentProcessing(prev => ({ ...prev, [invoiceId]: false }));
+    }
+  }, [toast]);
   
   // Define table columns
   const columns = [
@@ -154,9 +195,11 @@ const ExhibitorInvoices = () => {
               colorScheme="green"
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/exhibitor/payment/${item._id}`);
+                handlePayment(item._id);
               }}
               leftIcon={<Icon as={FiCreditCard} />}
+              isLoading={paymentProcessing[item._id]}
+              loadingText="Processing"
             >
               Pay
             </Button>
@@ -215,6 +258,20 @@ const ExhibitorInvoices = () => {
   return (
     <DashboardLayout title="Invoices">
       <Box p={4}>
+        {/* Error message if any */}
+        {error && (
+          <Alert status="error" mb={4} borderRadius="md">
+            <AlertIcon />
+            <Box flex="1">
+              <Text fontWeight="bold">Error loading invoices</Text>
+              <Text fontSize="sm">{error}</Text>
+            </Box>
+            <Button size="sm" onClick={fetchInvoices}>
+              Retry
+            </Button>
+          </Alert>
+        )}
+      
         {/* Header */}
         <Flex 
           direction={{ base: 'column', md: 'row' }} 
@@ -387,51 +444,6 @@ const ExhibitorInvoices = () => {
               }}
               onRowClick={(item) => navigate(`/exhibitor/invoices/${item._id}`)}
             />
-          </CardBody>
-        </Card>
-        
-        {/* Payment Information */}
-        <Card mt={6}>
-          <CardHeader pb={0}>
-            <Heading size="md">Payment Information</Heading>
-          </CardHeader>
-          <CardBody>
-            <VStack align="start" spacing={4}>
-              <Text>
-                Invoices are generated after you complete your registration process for an event.
-                Payment is required to finalize your participation.
-              </Text>
-              
-              <HStack>
-                <Badge colorScheme="yellow" p={2} borderRadius="md">
-                  <HStack>
-                    <Icon as={FiClock} />
-                    <Text>PENDING</Text>
-                  </HStack>
-                </Badge>
-                <Text>Payment is required</Text>
-              </HStack>
-              
-              <HStack>
-                <Badge colorScheme="green" p={2} borderRadius="md">
-                  <HStack>
-                    <Icon as={FiCheckCircle} />
-                    <Text>PAID</Text>
-                  </HStack>
-                </Badge>
-                <Text>Payment has been completed</Text>
-              </HStack>
-              
-              <HStack>
-                <Badge colorScheme="red" p={2} borderRadius="md">
-                  <HStack>
-                    <Icon as={FiXCircle} />
-                    <Text>CANCELLED</Text>
-                  </HStack>
-                </Badge>
-                <Text>Invoice has been cancelled</Text>
-              </HStack>
-            </VStack>
           </CardBody>
         </Card>
       </Box>

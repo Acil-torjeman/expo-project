@@ -32,7 +32,18 @@ const useInvoices = (initialFilters = {}) => {
     setError(null);
     
     try {
+      console.log('Fetching invoices from hook...');
       const data = await invoiceService.getMyInvoices();
+      console.log('Raw invoices data:', data);
+      
+      // Check if data is valid array
+      if (!Array.isArray(data)) {
+        console.error('Invalid invoices data received:', data);
+        setError('Received invalid data format from server');
+        setInvoices([]);
+        setLoading(false);
+        return [];
+      }
       
       // Filter invoices based on current filters
       let filteredData = [...data];
