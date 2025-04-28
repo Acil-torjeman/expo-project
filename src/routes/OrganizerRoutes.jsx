@@ -13,6 +13,7 @@ import OrganizerPlans from '../pages/organizer/Plans';
 import OrganizerStands from '../pages/organizer/Stands';
 import OrganizerEquipment from '../pages/organizer/Equipment';
 import OrganizerRegistrations from '../pages/organizer/Registrations';
+import OrganizerRegistrationDetails from '../pages/organizer/RegistrationDetails'; // New import
 import OrganizerInvoices from '../pages/organizer/Invoices';
 import OrganizerMessages from '../pages/organizer/Messages';
 import OrganizerNotifications from '../pages/organizer/Notifications';
@@ -45,8 +46,6 @@ const OrganizerRoutes = () => {
           </ProtectedRoute>
         } 
       />
-      
-
       
       {/* Gestion des exposants */}
       <Route 
@@ -94,6 +93,16 @@ const OrganizerRoutes = () => {
         element={
           <ProtectedRoute requiredRole={UserRole.ORGANIZER}>
             <OrganizerRegistrations />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Détails d'une inscription (nouvelle route) */}
+      <Route 
+        path="registrations/:id" 
+        element={
+          <ProtectedRoute requiredRole={UserRole.ORGANIZER}>
+            <OrganizerRegistrationDetails />
           </ProtectedRoute>
         } 
       />

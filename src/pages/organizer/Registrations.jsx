@@ -1,11 +1,11 @@
 // src/pages/organizer/Registrations.jsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
-  Heading,
   Button,
-  useDisclosure,
   Flex,
+  Heading,
   Text,
   HStack,
   Tag,
@@ -15,6 +15,7 @@ import {
   CardBody,
   IconButton,
   useToast,
+  useDisclosure
 } from '@chakra-ui/react';
 import {
   FiFilter,
@@ -30,7 +31,6 @@ import TableSearchBar from '../../components/common/ui/TableSearchBar';
 import FilterModal from '../../components/common/ui/FilterModal';
 import Table from '../../components/common/ui/Table';
 import RegistrationFilterForm from '../../components/organizer/registrations/RegistrationFilterForm';
-import RegistrationDetailsModal from '../../components/organizer/registrations/RegistrationDetailsModal';
 import ReviewRegistrationModal from '../../components/organizer/registrations/ReviewRegistrationModal';
 import RegistrationStats from '../../components/organizer/registrations/RegistrationStats';
 import useRegistrations from '../../hooks/useRegistrations';
@@ -41,6 +41,7 @@ const MotionBox = motion(Box);
 
 const Registrations = () => {
   const toast = useToast();
+  const navigate = useNavigate();
   
   // Get registrations data and functions from custom hook
   const {
@@ -72,12 +73,6 @@ const Registrations = () => {
     isOpen: isFilterOpen,
     onOpen: onFilterOpen,
     onClose: onFilterClose
-  } = useDisclosure();
-  
-  const {
-    isOpen: isDetailsOpen,
-    onOpen: onDetailsOpen,
-    onClose: onDetailsClose
   } = useDisclosure();
   
   const {
@@ -157,7 +152,7 @@ const Registrations = () => {
       accessor: '_id',
       render: (item) => (
         <HStack spacing={2}>
-          {/* View details icon */}
+          {/* View details icon - navigate to details page */}
           <IconButton
             aria-label="View details"
             icon={<FiEye />}
@@ -166,7 +161,7 @@ const Registrations = () => {
             variant="ghost"
             onClick={(e) => {
               e.stopPropagation();
-              handleAction('view', item);
+              navigate(`/organizer/registrations/${item._id}`);
             }}
           />
           
@@ -194,9 +189,6 @@ const Registrations = () => {
     setSelectedItem(item);
     
     switch (action) {
-      case 'view':
-        onDetailsOpen();
-        break;
       case 'review':
         onReviewOpen();
         break;
@@ -215,8 +207,14 @@ const Registrations = () => {
         status: 'approved' 
       });
       setSelectedItem(null);
-      onDetailsClose();
       onReviewClose();
+      
+      toast({
+        title: 'Registration Approved',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
     } catch (error) {
       toast({
         title: 'Error',
@@ -241,8 +239,14 @@ const Registrations = () => {
         reason
       });
       setSelectedItem(null);
-      onDetailsClose();
       onReviewClose();
+      
+      toast({
+        title: 'Registration Rejected',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
     } catch (error) {
       toast({
         title: 'Error',
@@ -267,10 +271,9 @@ const Registrations = () => {
     onFilterClose();
   };
   
-  // Handle row click
+  // Handle row click - navigate to details page
   const handleRowClick = (item) => {
-    setSelectedItem(item);
-    onDetailsOpen();
+    navigate(`/organizer/registrations/${item._id}`);
   };
   
   // Get active filters count
@@ -480,25 +483,7 @@ const Registrations = () => {
         />
       </FilterModal>
       
-      {/* Registration Details Modal */}
-      {selectedItem && (
-        <RegistrationDetailsModal
-          isOpen={isDetailsOpen}
-          onClose={onDetailsClose}
-          registration={selectedItem}
-          isPending={selectedItem.status === 'pending'}
-          onApprove={() => {
-            onDetailsClose();
-            handleApprove();
-          }}
-          onReject={() => {
-            onDetailsClose();
-            onReviewOpen();
-          }}
-        />
-      )}
-      
-      {/* Review Registration Modal */}
+      {/* Review Registration Modal - only for quick actions, full review on details page */}
       {selectedItem && (
         <ReviewRegistrationModal
           isOpen={isReviewOpen}

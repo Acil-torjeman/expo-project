@@ -244,12 +244,12 @@ class RegistrationService {
     }
   }
 
-  /**
+   /**
    * Cancel a registration
    * @param {string} id - Registration ID
    * @returns {Promise<Object>} Cancelled registration
    */
-  async cancelRegistration(id) {
+   async cancelRegistration(id) {
     try {
       const response = await api.post(`/registrations/${id}/cancel`);
       return response.data;
@@ -258,7 +258,7 @@ class RegistrationService {
       throw error;
     }
   }
-
+  
   /**
    * Review a registration (approve or reject)
    * @param {string} id - Registration ID

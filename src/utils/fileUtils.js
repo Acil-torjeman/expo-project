@@ -1,3 +1,4 @@
+// src/utils/fileUtils.js
 import apiConfig from '../config/api.config';
 
 export const getFileUrl = (filePath) => {
@@ -31,4 +32,26 @@ export const getPlanFileUrl = (filename) => {
 export const getInvoicePdfUrl = (filename) => {
   if (!filename) return '';
   return getFileUrl(`${apiConfig.UPLOADS.INVOICES}/${filename}`);
+};
+
+// New utility functions for company documents
+
+export const getCompanyLogoUrl = (filename) => {
+  if (!filename) return '';
+  return getFileUrl(`${apiConfig.UPLOADS.LOGOS}/${filename}`);
+};
+
+export const getCompanyDocumentUrl = (filename) => {
+  if (!filename) return '';
+  return getFileUrl(`/uploads/exhibitor-documents/${filename}`);
+};
+
+export const getKbisDocumentUrl = (filename) => {
+  if (!filename) return '';
+  return getCompanyDocumentUrl(filename);
+};
+
+export const getInsuranceDocumentUrl = (filename) => {
+  if (!filename) return '';
+  return getCompanyDocumentUrl(filename);
 };
