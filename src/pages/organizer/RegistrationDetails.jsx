@@ -33,11 +33,12 @@ import {
   Td,
   useToast,
   useDisclosure,
-  Tag,
   Link,
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink
+  BreadcrumbLink,
+  Image,
+  useBreakpointValue
 } from '@chakra-ui/react';
 import { 
   FiUser, 
@@ -49,7 +50,7 @@ import {
   FiFileText, 
   FiCheck, 
   FiX, 
-  FiAlertTriangle,
+  FiRefreshCw,
   FiClock,
   FiDownload,
   FiExternalLink,
@@ -58,24 +59,93 @@ import {
   FiMonitor,
   FiCalendar,
   FiDollarSign,
-  FiList
+  FiGlobe
 } from 'react-icons/fi';
+import { motion } from 'framer-motion';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import ConfirmDialog from '../../components/common/ui/ConfirmDialog';
 import EventInfo from '../../components/organizer/registrations/EventInfo';
 import { getStatusColorScheme, getStatusDisplayText } from '../../constants/registrationConstants';
-import { getFileUrl } from '../../utils/fileUtils';
 import registrationService from '../../services/registration.service';
+import invoiceService from '../../services/invoice.service';
 import ReviewRegistrationModal from '../../components/organizer/registrations/ReviewRegistrationModal';
-import apiConfig from '../../config/api.config';
+
+const MotionBox = motion(Box);
+const MotionFlex = motion(Flex);
+
+// Fonction simple pour obtenir l'URL d'un fichier
+const getFileUrl = (filename, path = '/uploads/exhibitor-documents') => {
+  if (!filename) return null;
+  return `${import.meta.env.VITE_API_BASE_URL}/files${path}/${filename}`;
+};
+
+
+
+
+// Composant pour l'élément de timeline
+const TimelineItem = ({ 
+  icon, 
+  title, 
+  date, 
+  isActive = true, 
+  isLast = false, 
+  color = "blue.500" 
+}) => (
+  <MotionFlex 
+    align="center" 
+    mb={isLast ? 0 : 4}
+    opacity={isActive ? 1 : 0.5}
+    initial={{ opacity: 0, x: -20 }}
+    animate={{ opacity: isActive ? 1 : 0.5, x: 0 }}
+    transition={{ duration: 0.5 }}
+  >
+    <Box
+      position="relative"
+      zIndex="1"
+    >
+      <Flex
+        w="40px"
+        h="40px"
+        borderRadius="full"
+        justify="center"
+        align="center"
+        bg={isActive ? `${color}` : "gray.200"}
+        color={isActive ? "white" : "gray.500"}
+        boxShadow={isActive ? "0 0 15px" : "none"}
+        shadowColor={`${color}40`}
+      >
+        <Icon as={icon} boxSize={5} />
+      </Flex>
+      
+      {!isLast && (
+        <Box
+          position="absolute"
+          left="19px"
+          top="40px"
+          width="2px"
+          height="40px"
+          bgGradient={isActive ? `linear(to-b, ${color}, gray.200)` : "gray.200"}
+          zIndex="-1"
+        />
+      )}
+    </Box>
+    
+    <Box ml={4}>
+      <Text fontWeight="bold">{title}</Text>
+      <Text fontSize="sm" color="gray.500">{date}</Text>
+    </Box>
+  </MotionFlex>
+);
 
 const RegistrationDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const isMobile = useBreakpointValue({ base: true, md: false });
   
   // State
   const [registration, setRegistration] = useState(null);
+  const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -95,11 +165,28 @@ const RegistrationDetails = () => {
   
   // Fetch registration data
   useEffect(() => {
-    const fetchRegistration = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const data = await registrationService.getRegistrationById(id);
-        setRegistration(data);
+        // Fetch registration details
+        const regData = await registrationService.getRegistrationById(id);
+        console.log("Registration data:", regData); // Debug
+        
+        if (regData.exhibitor && regData.exhibitor.company) {
+          console.log("Company data:", regData.exhibitor.company);
+        }
+        
+        setRegistration(regData);
+        
+        // Try to fetch invoice if registration is completed
+        if (regData.status === 'completed') {
+          try {
+            const invoiceData = await invoiceService.getInvoiceByRegistration(regData._id);
+            setInvoice(invoiceData);
+          } catch (invError) {
+            console.log('Invoice not available yet:', invError);
+          }
+        }
       } catch (error) {
         setError(error.message || 'Failed to load registration details');
         toast({
@@ -114,7 +201,7 @@ const RegistrationDetails = () => {
       }
     };
     
-    fetchRegistration();
+    fetchData();
   }, [id, toast]);
   
   // Format date helper
@@ -135,7 +222,7 @@ const RegistrationDetails = () => {
   
   // Check if invoice is paid
   const isInvoicePaid = () => {
-    return registration?.invoice?.status === 'paid';
+    return invoice?.status === 'paid';
   };
   
   // Handle approve action
@@ -434,12 +521,29 @@ const RegistrationDetails = () => {
               {/* Company Information */}
               <Box>
                 <Flex align="center" mb={4}>
-                  <Avatar 
-                    size="lg"
-                    name={company.companyName}
-                    src={company.companyLogoPath ? getFileUrl(`${apiConfig.UPLOADS.LOGOS}/${company.companyLogoPath}`) : ''}
-                    mr={4}
-                  />
+                  {company.companyLogoPath ? (
+                    <Box mr={4} borderRadius="md" overflow="hidden" width="70px" height="70px">
+                      <Image 
+                        src={getFileUrl(company.companyLogoPath)}
+                        alt={company.companyName || "Company logo"}
+                        objectFit="cover"
+                        width="100%"
+                        height="100%"
+                        fallback={
+                          <Avatar 
+                            size="lg"
+                            name={company.companyName || "Unknown"}
+                          />
+                        }
+                      />
+                    </Box>
+                  ) : (
+                    <Avatar 
+                      size="lg"
+                      name={company.companyName || "Unknown"}
+                      mr={4}
+                    />
+                  )}
                   <Box>
                     <Heading size="md">{company.companyName || 'Unknown Company'}</Heading>
                     <HStack mt={1}>
@@ -489,8 +593,12 @@ const RegistrationDetails = () => {
                 {company.website && (
                   <VStack align="start" mt={4}>
                     <Text fontWeight="bold">Website:</Text>
-                    <Link href={company.website.startsWith('http') ? company.website : `https://${company.website}`} isExternal color="teal.500">
-                      {company.website} <Icon as={FiExternalLink} mx="2px" />
+                    <Link href={company.website} isExternal color="teal.500">
+                      <Flex align="center">
+                        <Icon as={FiGlobe} mr={1} />
+                        {company.website}
+                        <Icon as={FiExternalLink} ml={1} />
+                      </Flex>
                     </Link>
                   </VStack>
                 )}
@@ -514,7 +622,7 @@ const RegistrationDetails = () => {
                   leftIcon={<FiFileText />}
                   rightIcon={<FiDownload />}
                   isDisabled={!company.kbisDocumentPath}
-                  onClick={() => window.open(getFileUrl(`/uploads/exhibitor-documents/${company.kbisDocumentPath}`), '_blank')}
+                  onClick={() => window.open(getFileUrl(company.kbisDocumentPath), '_blank')}
                 >
                   Business Registration
                 </Button>
@@ -526,7 +634,7 @@ const RegistrationDetails = () => {
                   leftIcon={<FiFileText />}
                   rightIcon={<FiDownload />}
                   isDisabled={!company.insuranceCertificatePath}
-                  onClick={() => window.open(getFileUrl(`/uploads/exhibitor-documents/${company.insuranceCertificatePath}`), '_blank')}
+                  onClick={() => window.open(getFileUrl(company.insuranceCertificatePath), '_blank')}
                 >
                   Insurance Certificate
                 </Button>
@@ -581,32 +689,34 @@ const RegistrationDetails = () => {
                     <Heading size="md">Selected Stands</Heading>
                   </CardHeader>
                   <CardBody>
-                    <Table variant="simple">
-                      <Thead>
-                        <Tr>
-                          <Th>Stand Number</Th>
-                          <Th>Type</Th>
-                          <Th>Area (m²)</Th>
-                          <Th isNumeric>Base Price</Th>
-                          <Th>Status</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {registration.stands.map((stand) => (
-                          <Tr key={stand._id}>
-                            <Td>#{stand.number}</Td>
-                            <Td>{stand.type || 'Standard'}</Td>
-                            <Td>{stand.area} m²</Td>
-                            <Td isNumeric>${stand.basePrice?.toFixed(2) || '0.00'}</Td>
-                            <Td>
-                              <Badge colorScheme={stand.status === 'reserved' ? 'orange' : 'green'}>
-                                {stand.status}
-                              </Badge>
-                            </Td>
+                    <Box overflowX="auto">
+                      <Table variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th>Stand Number</Th>
+                            <Th>Type</Th>
+                            <Th>Area (m²)</Th>
+                            <Th isNumeric>Base Price</Th>
+                            <Th>Status</Th>
                           </Tr>
-                        ))}
-                      </Tbody>
-                    </Table>
+                        </Thead>
+                        <Tbody>
+                          {registration.stands.map((stand) => (
+                            <Tr key={stand._id}>
+                              <Td>#{stand.number}</Td>
+                              <Td>{stand.type || 'Standard'}</Td>
+                              <Td>{stand.area} m²</Td>
+                              <Td isNumeric>${stand.basePrice?.toFixed(2) || '0.00'}</Td>
+                              <Td>
+                                <Badge colorScheme={stand.status === 'reserved' ? 'orange' : 'green'}>
+                                  {stand.status}
+                                </Badge>
+                              </Td>
+                            </Tr>
+                          ))}
+                        </Tbody>
+                      </Table>
+                    </Box>
                     
                     <HStack mt={4}>
                       <Icon as={FiInfo} color="blue.500" />
@@ -646,35 +756,37 @@ const RegistrationDetails = () => {
                     <Heading size="md">Selected Equipment</Heading>
                   </CardHeader>
                   <CardBody>
-                    <Table variant="simple">
-                      <Thead>
-                        <Tr>
-                          <Th>Equipment</Th>
-                          <Th>Description</Th>
-                          <Th>Unit</Th>
-                          <Th isNumeric>Quantity</Th>
-                          <Th isNumeric>Price</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {registration.equipment.map((equipment) => {
-                          // Find quantity if available
-                          const quantityItem = registration.equipmentQuantities?.find(eq => 
-                            String(eq.equipment) === String(equipment._id));
-                          const quantity = quantityItem ? quantityItem.quantity : 1;
-                          
-                          return (
-                            <Tr key={equipment._id}>
-                              <Td>{equipment.name}</Td>
-                              <Td maxW="200px" isTruncated>{equipment.description || 'N/A'}</Td>
-                              <Td>{equipment.unit || 'Item'}</Td>
-                              <Td isNumeric>{quantity}</Td>
-                              <Td isNumeric>${equipment.price?.toFixed(2) || '0.00'}</Td>
-                            </Tr>
-                          );
-                        })}
-                      </Tbody>
-                    </Table>
+                    <Box overflowX="auto">
+                      <Table variant="simple">
+                        <Thead>
+                          <Tr>
+                            <Th>ID</Th>
+                            <Th>Equipment</Th>
+                            <Th>Description</Th>
+                            <Th isNumeric>Quantity</Th>
+                            <Th isNumeric>Price</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {registration.equipment.map((equipment) => {
+                            // Find quantity if available
+                            const quantityItem = registration.equipmentQuantities?.find(eq => 
+                              String(eq.equipment) === String(equipment._id));
+                            const quantity = quantityItem ? quantityItem.quantity : 1;
+                            
+                            return (
+                              <Tr key={equipment._id}>
+                                <Td>{equipment._id.substring(0, 6)}</Td>
+                                <Td>{equipment.name}</Td>
+                                <Td maxW="200px" isTruncated>{equipment.description || 'N/A'}</Td>
+                                <Td isNumeric>{quantity}</Td>
+                                <Td isNumeric>${equipment.price?.toFixed(2) || '0.00'}</Td>
+                              </Tr>
+                            );
+                          })}
+                        </Tbody>
+                      </Table>
+                    </Box>
                     
                     <HStack mt={4}>
                       <Icon as={FiInfo} color="blue.500" />
@@ -711,22 +823,22 @@ const RegistrationDetails = () => {
               {isCompleted ? (
                 <Card variant="outline">
                   <CardHeader>
-                    <Flex justify="space-between" align="center">
+                    <Flex justify="space-between" align="center" wrap="wrap" gap={2}>
                       <Heading size="md">Invoice</Heading>
-                      {registration.invoice && (
+                      {invoice && (
                         <HStack>
-                          <Badge colorScheme={registration.invoice.status === 'paid' ? 'green' : 'yellow'}>
-                            {registration.invoice.status.toUpperCase()}
+                          <Badge colorScheme={invoice.status === 'paid' ? 'green' : 'yellow'}>
+                            {invoice.status.toUpperCase()}
                           </Badge>
                           <Button
                             size="sm"
                             leftIcon={<FiExternalLink />}
                             onClick={() => {
-                              if (registration.invoice.pdfPath) {
-                                window.open(getFileUrl(`/uploads/invoices/${registration.invoice.pdfPath}`), '_blank');
+                              if (invoice.pdfPath) {
+                                window.open(getFileUrl(invoice.pdfPath, '/uploads/invoices'), '_blank');
                               }
                             }}
-                            isDisabled={!registration.invoice.pdfPath}
+                            isDisabled={!invoice.pdfPath}
                           >
                             View PDF
                           </Button>
@@ -735,7 +847,7 @@ const RegistrationDetails = () => {
                     </Flex>
                   </CardHeader>
                   <CardBody>
-                    {registration.invoice ? (
+                    {invoice ? (
                       <Box>
                         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
                           <Box>
@@ -743,13 +855,13 @@ const RegistrationDetails = () => {
                               <HStack>
                                 <Icon as={FiFileText} color="teal.500" />
                                 <Text fontWeight="medium">Invoice Number:</Text>
-                                <Text>{registration.invoice.invoiceNumber}</Text>
+                                <Text>{invoice.invoiceNumber}</Text>
                               </HStack>
                               
                               <HStack>
                                 <Icon as={FiCalendar} color="teal.500" />
                                 <Text fontWeight="medium">Date:</Text>
-                                <Text>{formatDate(registration.invoice.createdAt)}</Text>
+                                <Text>{formatDate(invoice.createdAt)}</Text>
                               </HStack>
                               
                               <HStack>
@@ -765,25 +877,25 @@ const RegistrationDetails = () => {
                               <HStack>
                                 <Icon as={FiDollarSign} color="teal.500" />
                                 <Text fontWeight="medium">Subtotal:</Text>
-                                <Text>${registration.invoice.subtotal?.toFixed(2) || '0.00'}</Text>
+                                <Text>${invoice.subtotal?.toFixed(2) || '0.00'}</Text>
                               </HStack>
                               
                               <HStack>
                                 <Icon as={FiDollarSign} color="teal.500" />
-                                <Text fontWeight="medium">Tax ({registration.invoice.taxRate * 100}%):</Text>
-                                <Text>${registration.invoice.taxAmount?.toFixed(2) || '0.00'}</Text>
+                                <Text fontWeight="medium">Tax ({invoice.taxRate * 100}%):</Text>
+                                <Text>${invoice.taxAmount?.toFixed(2) || '0.00'}</Text>
                               </HStack>
                               
                               <HStack>
                                 <Icon as={FiDollarSign} color="teal.500" />
                                 <Text fontWeight="bold">Total:</Text>
-                                <Text fontWeight="bold">${registration.invoice.total?.toFixed(2) || '0.00'}</Text>
+                                <Text fontWeight="bold">${invoice.total?.toFixed(2) || '0.00'}</Text>
                               </HStack>
                             </VStack>
                           </Box>
                         </SimpleGrid>
                         
-                        {registration.invoice.pdfPath && (
+                        {invoice.pdfPath && (
                           <Box 
                             border="1px" 
                             borderColor="gray.200" 
@@ -792,7 +904,7 @@ const RegistrationDetails = () => {
                             overflow="hidden"
                           >
                             <iframe
-                              src={getFileUrl(`/uploads/invoices/${registration.invoice.pdfPath}#toolbar=1`)}
+                              src={getFileUrl(invoice.pdfPath, '/uploads/invoices')}
                               style={{
                                 width: '100%',
                                 height: '100%',
@@ -813,19 +925,35 @@ const RegistrationDetails = () => {
                         borderRadius="md"
                       >
                         <Icon as={FiFileText} boxSize={10} color="gray.400" mb={4} />
-                        <Text fontWeight="medium" mb={2}>No Invoice Generated</Text>
+                        <Text fontWeight="medium" mb={2}>Generating Invoice...</Text>
                         <Text color="gray.500" textAlign="center" mb={4}>
-                          An invoice will be generated when the registration is completed with stands selection.
+                          An invoice is being generated for this completed registration. It will be available soon.
                         </Text>
-                        <Link
-                          color="teal.500"
-                          onClick={() => navigate('/organizer/invoices')}
+                        <Button
+                          colorScheme="teal"
+                          leftIcon={<FiRefreshCw />}
+                          onClick={async () => {
+                            try {
+                              const invoiceData = await invoiceService.getInvoiceByRegistration(registration._id);
+                              setInvoice(invoiceData);
+                              toast({
+                                title: 'Success',
+                                description: 'Invoice data loaded successfully',
+                                status: 'success',
+                                duration: 2000
+                              });
+                            } catch (err) {
+                              toast({
+                                title: 'Invoice not ready',
+                                description: 'The invoice is still being processed',
+                                status: 'info',
+                                duration: 3000
+                              });
+                            }
+                          }}
                         >
-                          <HStack>
-                            <Icon as={FiList} />
-                            <Text>View All Invoices</Text>
-                          </HStack>
-                        </Link>
+                          Check Invoice Status
+                        </Button>
                       </Flex>
                     )}
                   </CardBody>
@@ -849,85 +977,77 @@ const RegistrationDetails = () => {
           </TabPanels>
         </Tabs>
         
-        {/* Status Timeline */}
-        <Card mb={6}>
-          <CardHeader>
+        {/* Modern Timeline */}
+        <Card mb={6} overflow="hidden">
+          <CardHeader bg="teal.500" color="white">
             <Heading size="md">Registration Timeline</Heading>
           </CardHeader>
-          <CardBody>
-            <Flex direction="column">
-              <HStack mb={4} opacity={1}>
-                <Icon as={FiClock} color="blue.500" boxSize={5} />
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="bold">Registration Submitted</Text>
-                  <Text fontSize="sm" color="gray.500">{formatDate(registration.createdAt)}</Text>
-                </VStack>
-              </HStack>
+          <CardBody 
+            bg="gray.50" 
+            py={6}
+            px={8}
+          >
+            <MotionBox
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <TimelineItem 
+                icon={FiClock} 
+                title="Registration Submitted"
+                date={formatDate(registration.createdAt)}
+                color="blue.500"
+                isActive={true}
+              />
               
-              <HStack mb={4} opacity={isApproved || isRejected || isCompleted || isCancelled ? 1 : 0.5}>
-                <Icon 
-                  as={isRejected ? FiX : FiCheck} 
-                  color={isRejected ? "red.500" : "green.500"} 
-                  boxSize={5} 
-                />
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="bold">
-                    {isRejected ? 'Registration Rejected' : 'Registration Approved'}
-                  </Text>
-                  <Text fontSize="sm" color="gray.500">
-                    {isRejected && registration.rejectionDate ? formatDate(registration.rejectionDate) :
+              <TimelineItem 
+                icon={isRejected ? FiX : FiCheck} 
+                title={isRejected ? "Registration Rejected" : "Registration Approved"}
+                date={isRejected && registration.rejectionDate ? formatDate(registration.rejectionDate) :
                      isApproved && registration.approvalDate ? formatDate(registration.approvalDate) :
                      'Pending'}
-                  </Text>
-                </VStack>
-              </HStack>
+                color={isRejected ? "red.500" : "green.500"}
+                isActive={isApproved || isRejected || isCompleted || isCancelled}
+              />
               
-              <HStack mb={4} opacity={isCompleted || isCancelled ? 1 : 0.5}>
-                <Icon 
-                  as={isCancelled ? FiX : FiMonitor} 
-                  color={isCancelled ? "red.500" : "orange.500"} 
-                  boxSize={5} 
-                />
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="bold">
-                    {isCancelled ? 'Registration Cancelled' : 'Stands Selection'}
-                  </Text>
-                  <Text fontSize="sm" color="gray.500">
-                    {isCancelled && registration.cancellationDate ? formatDate(registration.cancellationDate) :
+              <TimelineItem 
+                icon={isCancelled ? FiX : FiMonitor} 
+                title={isCancelled ? "Registration Cancelled" : "Stands Selection"}
+                date={isCancelled && registration.cancellationDate ? formatDate(registration.cancellationDate) :
                      registration.standSelectionCompleted ? 'Completed' : 'Pending'}
-                  </Text>
-                </VStack>
-              </HStack>
+                color={isCancelled ? "red.500" : "orange.500"}
+                isActive={isCompleted || isCancelled || registration.standSelectionCompleted}
+              />
               
-              <HStack mb={4} opacity={isCompleted ? 1 : 0.5}>
-                <Icon as={FiFileText} color="purple.500" boxSize={5} />
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="bold">Invoice Generated</Text>
-                  <Text fontSize="sm" color="gray.500">
-                    {registration.invoice ? formatDate(registration.invoice.createdAt) : 'Pending'}
-                  </Text>
-                </VStack>
-              </HStack>
+              <TimelineItem 
+                icon={FiFileText} 
+                title="Invoice Generated"
+                date={invoice ? formatDate(invoice.createdAt) : 'Pending'}
+                color="purple.500"
+                isActive={isCompleted && invoice}
+              />
               
-              <HStack opacity={registration.invoice?.status === 'paid' ? 1 : 0.5}>
-                <Icon as={FiDollarSign} color="green.500" boxSize={5} />
-                <VStack align="start" spacing={0}>
-                  <Text fontWeight="bold">Payment Completed</Text>
-                  <Text fontSize="sm" color="gray.500">
-                    {registration.invoice?.status === 'paid' 
-                      ? formatDate(registration.invoice.updatedAt) 
-                      : 'Pending'}
-                  </Text>
-                </VStack>
-              </HStack>
-            </Flex>
+              <TimelineItem 
+                icon={FiDollarSign} 
+                title="Payment Completed"
+                date={invoice?.status === 'paid' ? formatDate(invoice.updatedAt) : 'Pending'}
+                color="green.500"
+                isActive={invoice?.status === 'paid'}
+                isLast={true}
+              />
+            </MotionBox>
           </CardBody>
         </Card>
         
         {/* Action Buttons */}
-        <Flex justify="center" mb={6}>
+        <Flex 
+          justify="center" 
+          mb={6}
+          wrap="wrap"
+          gap={3}
+        >
           <Button 
-            mr={4} 
+            mr={{ base: 0, md: 4 }}
             onClick={() => navigate('/organizer/registrations')}
           >
             Back to Registrations
@@ -938,7 +1058,7 @@ const RegistrationDetails = () => {
               <Button 
                 colorScheme="red" 
                 variant="outline" 
-                mr={4}
+                mr={{ base: 0, md: 4 }}
                 onClick={onReviewOpen}
                 isLoading={submitting}
               >
@@ -965,16 +1085,16 @@ const RegistrationDetails = () => {
             </Button>
           )}
           
-          {isCompleted && registration.invoice && (
+          {isCompleted && invoice && (
             <Button
               colorScheme="blue"
               leftIcon={<FiExternalLink />}
               onClick={() => {
-                if (registration.invoice.pdfPath) {
-                  window.open(getFileUrl(`/uploads/invoices/${registration.invoice.pdfPath}`), '_blank');
+                if (invoice.pdfPath) {
+                  window.open(getFileUrl(invoice.pdfPath, '/uploads/invoices'), '_blank');
                 }
               }}
-              isDisabled={!registration.invoice.pdfPath}
+              isDisabled={!invoice.pdfPath}
             >
               View Invoice PDF
             </Button>
