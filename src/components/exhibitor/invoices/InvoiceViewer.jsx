@@ -102,7 +102,7 @@ const InvoiceViewer = ({ invoiceId, pdfPath }) => {
                 src={`${pdfUrl}#toolbar=1`}
                 style={{
                     width: '100%',
-                    height: '80vh', // 80% de la hauteur de la fenêtre du navigateur
+                    height: '80vh',
                     border: 'none',
                     display: 'block',
                 }}

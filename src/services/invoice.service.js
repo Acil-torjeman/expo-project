@@ -126,6 +126,34 @@ class InvoiceService {
     return getInvoicePdfUrl(pdfPath);
   }
 
+ /**
+ * Get invoices for the current organizer's events
+ * @returns {Promise<Array>} List of invoices
+ */
+async getOrganizerInvoices() {
+  try {
+    console.log('Fetching invoices for organizer');
+    const response = await api.get('/invoices/organizer');
+    
+    // Ensure we return an array even if response format is unexpected
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else if (response.data && Array.isArray(response.data.invoices)) {
+      return response.data.invoices;
+    } else {
+      console.warn('Unexpected response format from /invoices/organizer', response.data);
+      return [];
+    }
+  } catch (error) {
+    console.error('Failed to fetch organizer invoices:', error);
+    // Use _handleError if it exists in your service
+    if (typeof this._handleError === 'function') {
+      this._handleError(error, 'Failed to fetch organizer invoices');
+    }
+    return [];
+  }
+}
+
   _handleError(error, defaultMessage) {
     console.error(`${defaultMessage}:`, error);
     

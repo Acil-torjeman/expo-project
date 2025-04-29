@@ -112,7 +112,7 @@ const TimelineItem = ({
         bg={isActive ? `${color}` : "gray.200"}
         color={isActive ? "white" : "gray.500"}
         boxShadow={isActive ? "0 0 15px" : "none"}
-        shadowColor={`${color}40`}
+        shadowcolor={`${color}40`}
       >
         <Icon as={icon} boxSize={5} />
       </Flex>
@@ -593,11 +593,11 @@ const RegistrationDetails = () => {
                 {company.website && (
                   <VStack align="start" mt={4}>
                     <Text fontWeight="bold">Website:</Text>
-                    <Link href={company.website} isExternal color="teal.500">
+                    <Link href={company.website.startsWith('http') ? company.website : `https://${company.website}`} isExternal color="teal.500">
                       <Flex align="center">
                         <Icon as={FiGlobe} mr={1} />
                         {company.website}
-                        <Icon as={FiExternalLink} ml={1} />
+
                       </Flex>
                     </Link>
                   </VStack>
@@ -900,18 +900,20 @@ const RegistrationDetails = () => {
                             border="1px" 
                             borderColor="gray.200" 
                             borderRadius="md" 
-                            h="300px" 
+                            h="800px" 
                             overflow="hidden"
                           >
                             <iframe
                               src={getFileUrl(invoice.pdfPath, '/uploads/invoices')}
                               style={{
                                 width: '100%',
-                                height: '100%',
-                                border: 'none'
+                                height: '100vh',
+                                border: 'none',
+                                display: 'block'
                               }}
                               title="Invoice PDF"
                             />
+                              
                           </Box>
                         )}
                       </Box>

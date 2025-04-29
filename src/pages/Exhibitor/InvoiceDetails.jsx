@@ -400,15 +400,6 @@ const InvoiceDetails = () => {
             Back to Registration
           </Button>
           
-          <Button 
-            colorScheme="blue" 
-            leftIcon={<Icon as={FiCreditCard} />}
-            onClick={handlePayment}
-            isLoading={paymentLoading}
-            isDisabled={status === 'paid' || status === 'cancelled'}
-          >
-            {status === 'paid' ? 'View Payment History' : 'Proceed to Payment'}
-          </Button>
         </Flex>
       </Box>
     </DashboardLayout>

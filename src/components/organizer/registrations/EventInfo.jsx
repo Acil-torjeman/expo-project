@@ -44,6 +44,19 @@ const EventInfo = ({ event }) => {
     return `${formatDate(startDate)} - ${formatDate(endDate)}`;
   };
   
+  // Format full address
+  const formatAddress = (location) => {
+    if (!location) return 'Address unavailable';
+    
+    const parts = [];
+    if (location.address) parts.push(location.address);
+    if (location.postalCode) parts.push(location.postalCode);
+    if (location.city) parts.push(location.city);
+    if (location.country) parts.push(location.country);
+    
+    return parts.join(', ');
+  };
+  
   // Theme colors
   const bgColor = useColorModeValue('gray.50', 'gray.700');
   const sectionBg = useColorModeValue('gray.50', 'gray.700');
@@ -94,15 +107,17 @@ const EventInfo = ({ event }) => {
           <Text>{formatDateRange(event.startDate, event.endDate)}</Text>
         </HStack>
         
-        <HStack fontSize="sm" color="gray.600" mb={1}>
-          <Icon as={FiMapPin} />
-          <Text>{event.location?.city}, {event.location?.country}</Text>
+        <HStack fontSize="sm" color="gray.600" mb={1} align="flex-start">
+          <Icon as={FiMapPin} mt="3px" />
+          <Text>{event.location ? formatAddress(event.location) : 'Location not specified'}</Text>
         </HStack>
         
-        <HStack fontSize="sm" color="gray.600">
-          <Icon as={FiClock} />
-          <Text>{event.openingHours}</Text>
-        </HStack>
+        {event.openingHours && (
+          <HStack fontSize="sm" color="gray.600">
+            <Icon as={FiClock} />
+            <Text>{event.openingHours}</Text>
+          </HStack>
+        )}
       </Box>
     </Box>
   );

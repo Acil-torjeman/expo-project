@@ -1,5 +1,4 @@
 // src/components/common/ui/Table.jsx
-import React from 'react';
 import {
   Box,
   Table as ChakraTable,
@@ -7,7 +6,7 @@ import {
   Tbody,
   Tr,
   Th,
-  Td, // Added missing Td import
+  Td,
   Flex,
   Text,
   IconButton,
@@ -17,7 +16,7 @@ import {
   Checkbox,
   Spinner,
 } from '@chakra-ui/react';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiClock, FiCheck, FiX } from 'react-icons/fi';
 
 /**
  * Reusable table component with pagination, selection, and loading states
@@ -42,7 +41,7 @@ const Table = ({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 10,
+    itemsPerPage: 5,
   },
   onChangePage = () => {},
   selectedItems = [],
