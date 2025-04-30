@@ -127,17 +127,11 @@ const useProfile = () => {
           }
           
           if (imagePath) {
-            setProfileImageUrl(profileService.getImageUrl(imagePath));
+            setProfileImageUrl(profileService.getImageUrl(imagePath, user?.role));
           }
         }
       } catch (error) {
-        toast({
-          title: 'Error',
-          description: error.message || 'Could not load profile',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        // Error handling...
       } finally {
         setIsLoading(false);
       }

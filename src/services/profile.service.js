@@ -1,5 +1,6 @@
 // src/services/profile.service.js
 import api from '../utils/api';
+import apiConfig from '../config/api.config';
 import { getCompanyLogoUrl, getOrganizationLogoUrl, getProfileImageUrl } from '../utils/fileUtils';
 
 /**
@@ -146,18 +147,19 @@ class ProfileService {
     }
   }
 
-  /**
+   /**
    * Get appropriate image URL based on user role and path
    * @param {string} imagePath - Path to the image file
+   * @param {string} role - User role
    * @returns {string} Full URL to the image
    */
-  getImageUrl(imagePath) {
+   getImageUrl(imagePath, role) {
     if (!imagePath) return '';
     
-    // Use the correct path based on filename pattern or explicitly check for directory
-    if (imagePath.includes('exhibitor-documents')) {
+    // Use the user role to determine the correct URL function
+    if (role === 'exhibitor') {
       return getCompanyLogoUrl(imagePath);
-    } else if (imagePath.includes('organization-logos')) {
+    } else if (role === 'organizer') {
       return getOrganizationLogoUrl(imagePath);
     } else {
       return getProfileImageUrl(imagePath);
