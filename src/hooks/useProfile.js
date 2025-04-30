@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@chakra-ui/react';
 import profileService from '../services/profile.service';
 import { useAuth } from '../context/AuthContext';
+import industrySectors from '../constants/industrySectors';
 
 const useProfile = () => {
   const toast = useToast();
@@ -15,6 +16,8 @@ const useProfile = () => {
   const [errors, setErrors] = useState({});
   const [profileImage, setProfileImage] = useState(null);
   const [profileImageUrl, setProfileImageUrl] = useState('');
+  const [countries, setCountries] = useState([]);
+  const [isLoadingCountries, setIsLoadingCountries] = useState(true);
   
   // Password form state
   const [passwordData, setPasswordData] = useState({
@@ -23,50 +26,125 @@ const useProfile = () => {
     confirmPassword: '',
   });
 
- // Load profile data
- useEffect(() => {
-  const fetchProfile = async () => {
-    try {
-      setIsLoading(true);
-      const data = await profileService.getProfile();
-      
-      console.log('Profile data loaded:', data); // Debug log
-      
-      // Set profile data
-      setProfileData(data);
-      
-      // Set profile image URL based on user role
-      if (data) {
-        let imagePath = null;
+  // Load countries from API or localStorage cache
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        // Check localStorage cache first
+        const cachedData = localStorage.getItem('countries-cache');
+        const cacheTimestamp = localStorage.getItem('countries-cache-timestamp');
         
-        if (user?.role === 'exhibitor' && data.company) {
-          imagePath = data.company.companyLogoPath;
-        } else if (user?.role === 'organizer') {
-          imagePath = data.organizationLogoPath;
-        } else {
-          // Admin or fallback
-          imagePath = data.avatar;
+        if (cachedData && cacheTimestamp) {
+          const age = Date.now() - parseInt(cacheTimestamp);
+          if (age < 24 * 60 * 60 * 1000) { // 24 hours
+            const parsedData = JSON.parse(cachedData);
+            if (Array.isArray(parsedData) && parsedData.length > 0) {
+              setCountries(parsedData);
+              setIsLoadingCountries(false);
+              return;
+            }
+          }
         }
         
-        if (imagePath) {
-          setProfileImageUrl(profileService.getImageUrl(imagePath));
+        // No valid cache, fetch from API
+        const response = await fetch('https://restcountries.com/v3.1/all?fields=name,flags,idd');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
         }
+        
+        const data = await response.json();
+        
+        // Format countries data
+        const formattedCountries = data
+          .filter(country => country.idd && country.idd.root)
+          .map(country => {
+            const suffix = country.idd.suffixes ? country.idd.suffixes[0] || '' : '';
+            return {
+              name: country.name.common,
+              code: country.idd.root + suffix,
+              flag: country.flags.png || country.flags.svg
+            };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name));
+        
+        // Place Tunisia first (if it exists)
+        const tunisiaIndex = formattedCountries.findIndex(c => c.name === 'Tunisia');
+        if (tunisiaIndex > 0) {
+          const tunisia = formattedCountries.splice(tunisiaIndex, 1)[0];
+          formattedCountries.unshift(tunisia);
+        }
+        
+        // Cache the data
+        try {
+          localStorage.setItem('countries-cache', JSON.stringify(formattedCountries));
+          localStorage.setItem('countries-cache-timestamp', Date.now().toString());
+        } catch (e) {
+          console.warn("Could not cache countries data:", e);
+        }
+        
+        setCountries(formattedCountries);
+      } catch (error) {
+        console.error("Error loading countries:", error);
+        // Use fallback countries if needed
+        const fallbackCountries = [
+          { name: 'Tunisia', code: '+216', flag: 'https://flagcdn.com/w320/tn.png' },
+          { name: 'France', code: '+33', flag: 'https://flagcdn.com/w320/fr.png' },
+          { name: 'United States', code: '+1', flag: 'https://flagcdn.com/w320/us.png' },
+          { name: 'Germany', code: '+49', flag: 'https://flagcdn.com/w320/de.png' },
+          { name: 'United Kingdom', code: '+44', flag: 'https://flagcdn.com/w320/gb.png' },
+        ];
+        setCountries(fallbackCountries);
+      } finally {
+        setIsLoadingCountries(false);
       }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Could not load profile',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  fetchProfile();
-}, [user, toast]);
+    };
+    
+    fetchCountries();
+  }, []);
+
+  // Load profile data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        const data = await profileService.getProfile();
+        
+        // Set profile data
+        setProfileData(data);
+        
+        // Set profile image URL based on user role
+        if (data) {
+          let imagePath = null;
+          
+          if (user?.role === 'exhibitor' && data.company) {
+            imagePath = data.company.companyLogoPath;
+          } else if (user?.role === 'organizer') {
+            imagePath = data.organizationLogoPath;
+          } else {
+            // Admin or fallback
+            imagePath = data.avatar;
+          }
+          
+          if (imagePath) {
+            setProfileImageUrl(profileService.getImageUrl(imagePath));
+          }
+        }
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Could not load profile',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProfile();
+  }, [user, toast]);
 
   // Handle profile form changes
   const handleProfileChange = useCallback((e) => {
@@ -114,6 +192,47 @@ const useProfile = () => {
       }));
     }
   }, [errors]);
+
+  // Handle country change
+  const handleCountryChange = useCallback((countryName) => {
+    const selectedCountry = countries.find(c => c.name === countryName);
+    
+    if (selectedCountry) {
+      if (user?.role === 'exhibitor') {
+        setProfileData(prev => ({
+          ...prev,
+          company: {
+            ...prev.company,
+            country: countryName,
+            contactPhoneCode: selectedCountry.code
+          },
+          personalPhoneCode: selectedCountry.code
+        }));
+      } else if (user?.role === 'organizer') {
+        setProfileData(prev => ({
+          ...prev,
+          country: countryName,
+          contactPhoneCode: selectedCountry.code
+        }));
+      }
+    }
+  }, [countries, user]);
+
+  // Handle sector change
+  const handleSectorChange = useCallback((e) => {
+    const sectorValue = e.target.value;
+    
+    if (user?.role === 'exhibitor') {
+      setProfileData(prev => ({
+        ...prev,
+        company: {
+          ...prev.company,
+          sector: sectorValue,
+          subsector: '' // Reset subsector when sector changes
+        }
+      }));
+    }
+  }, [user]);
 
   // Handle image upload
   const handleImageChange = useCallback((e) => {
@@ -166,9 +285,83 @@ const useProfile = () => {
       newErrors.email = 'Email is invalid';
     }
     
+    // Exhibitor validation
+    if (user?.role === 'exhibitor' && profileData.company) {
+      const company = profileData.company;
+      
+      if (!company.companyName?.trim()) {
+        newErrors['company.companyName'] = 'Company name is required';
+      }
+      
+      if (!company.companyAddress?.trim()) {
+        newErrors['company.companyAddress'] = 'Company address is required';
+      }
+      
+      if (!company.postalCity?.trim()) {
+        newErrors['company.postalCity'] = 'Postal code and city are required';
+      }
+      
+      if (!company.country?.trim()) {
+        newErrors['company.country'] = 'Country is required';
+      }
+      
+      if (!company.sector?.trim()) {
+        newErrors['company.sector'] = 'Sector is required';
+      }
+      
+      if (!company.subsector?.trim()) {
+        newErrors['company.subsector'] = 'Subsector is required';
+      }
+      
+      if (!company.registrationNumber?.trim()) {
+        newErrors['company.registrationNumber'] = 'Registration number is required';
+      }
+      
+      if (!company.contactPhone?.trim()) {
+        newErrors['company.contactPhone'] = 'Contact phone is required';
+      } else if (!/^[0-9]+$/.test(company.contactPhone)) {
+        newErrors['company.contactPhone'] = 'Phone number must contain only digits';
+      }
+      
+      if (!profileData.representativeFunction?.trim()) {
+        newErrors.representativeFunction = 'Representative function is required';
+      }
+      
+      if (!profileData.personalPhone?.trim()) {
+        newErrors.personalPhone = 'Personal phone is required';
+      } else if (!/^[0-9]+$/.test(profileData.personalPhone)) {
+        newErrors.personalPhone = 'Phone number must contain only digits';
+      }
+    }
+    
+    // Organizer validation
+    if (user?.role === 'organizer') {
+      if (!profileData.organizationName?.trim()) {
+        newErrors.organizationName = 'Organization name is required';
+      }
+      
+      if (!profileData.organizationAddress?.trim()) {
+        newErrors.organizationAddress = 'Organization address is required';
+      }
+      
+      if (!profileData.postalCity?.trim()) {
+        newErrors.postalCity = 'Postal code and city are required';
+      }
+      
+      if (!profileData.country?.trim()) {
+        newErrors.country = 'Country is required';
+      }
+      
+      if (!profileData.contactPhone?.trim()) {
+        newErrors.contactPhone = 'Contact phone is required';
+      } else if (!/^[0-9]+$/.test(profileData.contactPhone)) {
+        newErrors.contactPhone = 'Phone number must contain only digits';
+      }
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [profileData]);
+  }, [profileData, user]);
 
   // Validate password form
   const validatePasswordForm = useCallback(() => {
@@ -195,6 +388,15 @@ const useProfile = () => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [passwordData]);
+
+  // Get subsectors for selected sector
+  const getSubsectors = useCallback(() => {
+    if (user?.role === 'exhibitor' && profileData.company?.sector) {
+      const sector = industrySectors.find(s => s.name === profileData.company.sector);
+      return sector ? sector.subsectors : [];
+    }
+    return [];
+  }, [profileData.company?.sector, user?.role]);
 
   // Save profile changes
   const saveProfile = useCallback(async () => {
@@ -297,9 +499,14 @@ const useProfile = () => {
     isLoading,
     isSaving,
     errors,
+    countries,
+    isLoadingCountries,
     handleProfileChange,
     handlePasswordChange,
     handleImageChange,
+    handleCountryChange,
+    handleSectorChange,
+    getSubsectors,
     saveProfile,
     changePassword
   };
