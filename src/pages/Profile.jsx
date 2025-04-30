@@ -13,9 +13,10 @@ import {
   Flex,
   Text,
   VStack,
+  Button,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { FiUser, FiLock } from 'react-icons/fi';
+import { FiUser, FiLock, FiSave } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import DashboardLayout from '../layouts/DashboardLayout';
 import useProfile from '../hooks/useProfile';
@@ -68,6 +69,10 @@ const Profile = () => {
       }
     }
   };
+  
+  // Colors for styling the save button
+  const gradientStart = useColorModeValue('teal.400', 'teal.600');
+  const gradientEnd = useColorModeValue('teal.500', 'teal.700');
   
   // Determine user type for role-specific fields
   const isExhibitor = user?.role === 'exhibitor';
@@ -136,6 +141,31 @@ const Profile = () => {
                     {isOrganizer && (
                       <OrganizationInfoSection profile={profile} />
                     )}
+                    
+                    {/* Save Button - Moved from BasicInfoSection */}
+                    <Flex justify="flex-end" mt={6}>
+                      <Button
+                        colorScheme="teal"
+                        size="lg"
+                        leftIcon={<FiSave />}
+                        isLoading={profile.isSaving}
+                        loadingText="Saving"
+                        onClick={profile.saveProfile}
+                        bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
+                        _hover={{ 
+                          bgGradient: `linear(to-r, ${gradientEnd}, ${gradientStart})`,
+                          transform: 'translateY(-2px)',
+                          boxShadow: 'lg'
+                        }}
+                        _active={{
+                          transform: 'translateY(0)',
+                          boxShadow: 'md'
+                        }}
+                        transition="all 0.2s"
+                      >
+                        Save Changes
+                      </Button>
+                    </Flex>
                   </Box>
                 </MotionBox>
               </TabPanel>

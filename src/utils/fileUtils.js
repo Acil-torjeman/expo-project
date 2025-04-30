@@ -34,20 +34,38 @@ export const getInvoicePdfUrl = (filename) => {
   return getFileUrl(`${apiConfig.UPLOADS.INVOICES}/${filename}`);
 };
 
-// Company and organization logos
+// Company logo - stored in exhibitor-documents folder
 export const getCompanyLogoUrl = (filename) => {
   if (!filename) return '';
+  
+  // Handle both full path and just filename
+  if (filename.includes('/')) {
+    return getFileUrl(filename);
+  }
+  
   return getFileUrl(`/uploads/exhibitor-documents/${filename}`);
 };
 
 export const getOrganizationLogoUrl = (filename) => {
   if (!filename) return '';
-  return getFileUrl(`${apiConfig.UPLOADS.LOGOS}/${filename}`);
+  
+  // Handle both full path and just filename
+  if (filename.includes('/')) {
+    return getFileUrl(filename);
+  }
+  
+  return getFileUrl(`/uploads/organization-logos/${filename}`);
 };
 
-// Profile images
+// Admin profile image - stored in profile-images folder
 export const getProfileImageUrl = (filename) => {
   if (!filename) return '';
+  
+  // Handle both full path and just filename
+  if (filename.includes('/')) {
+    return getFileUrl(filename);
+  }
+  
   return getFileUrl(`/uploads/profile-images/${filename}`);
 };
 

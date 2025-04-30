@@ -1,5 +1,4 @@
 // src/services/profile.service.js
-// src/services/profile.service.js
 import api from '../utils/api';
 import { getCompanyLogoUrl, getOrganizationLogoUrl, getProfileImageUrl } from '../utils/fileUtils';
 
@@ -155,7 +154,7 @@ class ProfileService {
   getImageUrl(imagePath) {
     if (!imagePath) return '';
     
-    // Check if it's a logo or profile image based on path pattern
+    // Use the correct path based on filename pattern or explicitly check for directory
     if (imagePath.includes('exhibitor-documents')) {
       return getCompanyLogoUrl(imagePath);
     } else if (imagePath.includes('organization-logos')) {

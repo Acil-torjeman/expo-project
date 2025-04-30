@@ -12,24 +12,19 @@ import {
   InputGroup,
   Text,
   useColorModeValue,
-  Button,
   Divider
 } from '@chakra-ui/react';
-import { FiUser, FiMail, FiSave } from 'react-icons/fi';
+import { FiUser, FiMail } from 'react-icons/fi';
 
 const BasicInfoSection = ({ profile }) => {
   const {
     profileData,
     errors,
     handleProfileChange,
-    isSaving,
-    saveProfile
   } = profile;
   
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const headingColor = useColorModeValue('gray.800', 'white');
-  const gradientStart = useColorModeValue('teal.400', 'teal.600');
-  const gradientEnd = useColorModeValue('teal.500', 'teal.700');
   
   return (
     <Box mb={6}>
@@ -92,31 +87,6 @@ const BasicInfoSection = ({ profile }) => {
           <FormErrorMessage>{errors.email}</FormErrorMessage>
         </FormControl>
       </SimpleGrid>
-      
-      {/* Save Button */}
-      <Flex justify="flex-end" mt={4}>
-        <Button
-          colorScheme="teal"
-          size="lg"
-          leftIcon={<FiSave />}
-          isLoading={isSaving}
-          loadingText="Saving"
-          onClick={saveProfile}
-          bgGradient={`linear(to-r, ${gradientStart}, ${gradientEnd})`}
-          _hover={{ 
-            bgGradient: `linear(to-r, ${gradientEnd}, ${gradientStart})`,
-            transform: 'translateY(-2px)',
-            boxShadow: 'lg'
-          }}
-          _active={{
-            transform: 'translateY(0)',
-            boxShadow: 'md'
-          }}
-          transition="all 0.2s"
-        >
-          Save Changes
-        </Button>
-      </Flex>
       
       <Divider mt={6} />
     </Box>
