@@ -34,13 +34,24 @@ export const getInvoicePdfUrl = (filename) => {
   return getFileUrl(`${apiConfig.UPLOADS.INVOICES}/${filename}`);
 };
 
-// New utility functions for company documents
-
+// Company and organization logos
 export const getCompanyLogoUrl = (filename) => {
+  if (!filename) return '';
+  return getFileUrl(`/uploads/exhibitor-documents/${filename}`);
+};
+
+export const getOrganizationLogoUrl = (filename) => {
   if (!filename) return '';
   return getFileUrl(`${apiConfig.UPLOADS.LOGOS}/${filename}`);
 };
 
+// Profile images
+export const getProfileImageUrl = (filename) => {
+  if (!filename) return '';
+  return getFileUrl(`/uploads/profile-images/${filename}`);
+};
+
+// Company documents
 export const getCompanyDocumentUrl = (filename) => {
   if (!filename) return '';
   return getFileUrl(`/uploads/exhibitor-documents/${filename}`);

@@ -12,6 +12,9 @@ import NotFound from '../pages/NotFound';
 import Dashboard from '../pages/Dashboard';
 import ProtectedRoute from './ProtectedRoute';
 
+// Import the Profile page
+const Profile = React.lazy(() => import('../pages/Profile'));
+
 // Lazy load role-specific route components for better performance
 const AdminRoutes = React.lazy(() => import('./AdminRoutes'));
 const OrganizerRoutes = React.lazy(() => import('./OrganizerRoutes'));
@@ -45,6 +48,15 @@ const AppRoutes = () => {
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      } />
+      
+      {/* Profile route accessible to all authenticated users */}
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <React.Suspense fallback={<LazyLoadingFallback />}>
+            <Profile />
+          </React.Suspense>
         </ProtectedRoute>
       } />
       

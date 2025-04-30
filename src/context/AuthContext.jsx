@@ -136,6 +136,35 @@ export function AuthProvider({ children }) {
     // Check if user has the required role
     return user.role === requiredRole;
   };
+  
+  // Update user data function (for profile updates)
+  const updateUser = (userData) => {
+    // Merge new user data with existing user data
+    setUser(prevUser => ({
+      ...prevUser,
+      ...userData
+    }));
+    
+    // Update local storage to persist changes
+    if (userData) {
+      try {
+        // Get current stored user
+        const storedUser = authService.getCurrentUser();
+        if (storedUser) {
+          // Update only the changed fields
+          const updatedUser = {
+            ...storedUser,
+            ...userData
+          };
+          
+          // Save back to localStorage
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+      } catch (error) {
+        console.error("Error updating user data in storage:", error);
+      }
+    }
+  };
 
   // Value object to be provided by context
   const contextValue = {
@@ -145,6 +174,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     hasRole,
+    updateUser
   };
 
   return (

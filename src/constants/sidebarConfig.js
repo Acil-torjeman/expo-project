@@ -15,19 +15,20 @@ import {
   FiFileText,
   FiBarChart2,
   FiHelpCircle,
-  FiShield
+  FiShield,
+  FiUser
 } from 'react-icons/fi';
 import { UserRole } from './roles';
 
 /**
- * Configuration pour les éléments de navigation de la sidebar
- * Chaque élément comprend:
- * - path: Chemin URL pour la navigation
- * - icon: Composant d'icône à afficher
- * - label: Texte affiché dans la sidebar
+ * Configuration for sidebar navigation elements
+ * Each item includes:
+ * - path: URL path for navigation
+ * - icon: Icon component to display
+ * - label: Text displayed in the sidebar
  */
 const sidebarConfig = {
-  // Éléments de la sidebar pour les administrateurs
+  // Admin sidebar items
   [UserRole.ADMIN]: [
     { 
       path: '/admin/dashboard', 
@@ -44,12 +45,15 @@ const sidebarConfig = {
       icon: FiTrash2, 
       label: 'Trash',
     },
- 
-
-
+    // Common items (shared across all roles)
+    { 
+      path: '/profile', 
+      icon: FiUser, 
+      label: 'My Profile',
+    },
   ],
   
-  // Éléments de la sidebar pour les organisateurs
+  // Organizer sidebar items
   [UserRole.ORGANIZER]: [
     { 
       path: '/organizer/dashboard', 
@@ -81,15 +85,20 @@ const sidebarConfig = {
       icon: FiFileText, 
       label: 'Invoices',
     },
-    
     { 
       path: '/organizer/analytics', 
       icon: FiBarChart2, 
       label: 'Analytics',
     },
+    // Common items
+    { 
+      path: '/profile', 
+      icon: FiUser, 
+      label: 'My Profile',
+    },
   ],
   
-  // Éléments de la sidebar pour les exposants
+  // Exhibitor sidebar items
   [UserRole.EXHIBITOR]: [
     { 
       path: '/exhibitor/dashboard', 
@@ -106,7 +115,6 @@ const sidebarConfig = {
       icon: FiClipboard, 
       label: 'My Registrations',
     },
-    
     { 
       path: '/exhibitor/invoices', 
       icon: FiFileText, 
@@ -117,17 +125,22 @@ const sidebarConfig = {
       icon: FiCreditCard, 
       label: 'Payments',
     },
-
+    // Common items
+    { 
+      path: '/profile', 
+      icon: FiUser, 
+      label: 'My Profile',
+    },
   ]
 };
 
 /**
- * Récupère les éléments du menu pour un rôle spécifique
- * @param {string} role - Rôle de l'utilisateur (admin, organizer, exhibitor)
- * @returns {Array} Tableau d'éléments du menu accessibles
+ * Get menu items for a specific role
+ * @param {string} role - User role (admin, organizer, exhibitor)
+ * @returns {Array} Menu items for the role
  */
 export const getMenuForRole = (role) => {
-  // Retourne tous les éléments du menu pour ce rôle
+  // Return all menu items for the role
   return sidebarConfig[role] || [];
 };
 

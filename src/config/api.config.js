@@ -1,3 +1,4 @@
+// src/config/api.config.js
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default {
@@ -8,6 +9,8 @@ export default {
     EQUIPMENT: '/uploads/equipment-images',
     PLANS: '/uploads/plans',
     LOGOS: '/uploads/organization-logos',
-    INVOICES: '/uploads/invoices'
+    INVOICES: '/uploads/invoices',
+    PROFILE_IMAGES: '/uploads/profile-images',
+    EXHIBITOR_DOCUMENTS: '/uploads/exhibitor-documents'
   }
 };
