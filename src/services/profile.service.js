@@ -124,28 +124,37 @@ class ProfileService {
     }
   }
 
-  /**
-   * Upload profile image
-   * @param {File} imageFile - Image file to upload
-   * @returns {Promise<Object>} Upload result
-   */
-  async uploadProfileImage(imageFile) {
-    try {
-      const formData = new FormData();
-      formData.append('image', imageFile);
-      
-      const response = await api.post('/api/profile/image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Error uploading profile image:', error);
-      throw error;
+ /**
+ * Upload profile image
+ * @param {File} imageFile - Image file to upload
+ * @returns {Promise<Object>} Upload result
+ */
+async uploadProfileImage(imageFile) {
+  try {
+    console.log('Uploading image file:', imageFile?.name, imageFile?.type, imageFile?.size);
+    
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    // Log form data for debugging
+    for (let pair of formData.entries()) {
+      console.log('Form data entry:', pair[0], pair[1] instanceof File ? `File: ${pair[1].name}` : pair[1]);
     }
+    
+    const response = await api.post('/api/profile/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    console.log('Image upload successful, response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading profile image:', error);
+    console.error('Error details:', error.response?.data);
+    throw error;
   }
+}
 
    /**
    * Get appropriate image URL based on user role and path
