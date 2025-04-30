@@ -27,14 +27,12 @@ import {
   Image,
   Spinner,
   Textarea,
-  useDisclosure,
   Badge,
 } from '@chakra-ui/react';
 import { 
   FiUser, 
   FiMail, 
   FiLock, 
-  FiEdit2, 
   FiSave, 
   FiCamera, 
   FiPhone, 
@@ -148,7 +146,6 @@ const Profile = () => {
   
   // Get role-specific data
   const companyData = isExhibitor ? profileData.company || {} : {};
-  const organizationData = isOrganizer ? profileData.organization || {} : {};
   
   return (
     <DashboardLayout title="My Profile">
@@ -277,10 +274,10 @@ const Profile = () => {
                   </Flex>
                 )}
                 
-                {isOrganizer && organizationData && (
+                {isOrganizer && (
                   <Flex align="center">
                     <Icon as={FiBriefcase} mr={2} color="teal.500" />
-                    <Text>{organizationData.organizationName || 'Organization'}</Text>
+                    <Text>{profileData.organizationName || 'Organization'}</Text>
                   </Flex>
                 )}
               </MotionBox>
@@ -594,8 +591,8 @@ const Profile = () => {
                               <FormControl>
                                 <FormLabel>Organization Name</FormLabel>
                                 <Input
-                                  name="organization.organizationName"
-                                  value={organizationData.organizationName || ''}
+                                  name="organizationName"
+                                  value={profileData.organizationName || ''}
                                   onChange={handleProfileChange}
                                   placeholder="Organization name"
                                   focusBorderColor="teal.400"
@@ -606,8 +603,8 @@ const Profile = () => {
                               <FormControl>
                                 <FormLabel>Organization Address</FormLabel>
                                 <Input
-                                  name="organization.organizationAddress"
-                                  value={organizationData.organizationAddress || ''}
+                                  name="organizationAddress"
+                                  value={profileData.organizationAddress || ''}
                                   onChange={handleProfileChange}
                                   placeholder="Address"
                                   focusBorderColor="teal.400"
@@ -618,8 +615,8 @@ const Profile = () => {
                               <FormControl>
                                 <FormLabel>Postal Code & City</FormLabel>
                                 <Input
-                                  name="organization.postalCity"
-                                  value={organizationData.postalCity || ''}
+                                  name="postalCity"
+                                  value={profileData.postalCity || ''}
                                   onChange={handleProfileChange}
                                   placeholder="ZIP code, City"
                                   focusBorderColor="teal.400"
@@ -630,8 +627,8 @@ const Profile = () => {
                               <FormControl>
                                 <FormLabel>Country</FormLabel>
                                 <Input
-                                  name="organization.country"
-                                  value={organizationData.country || ''}
+                                  name="country"
+                                  value={profileData.country || ''}
                                   onChange={handleProfileChange}
                                   placeholder="Country"
                                   focusBorderColor="teal.400"
@@ -642,8 +639,8 @@ const Profile = () => {
                               <FormControl>
                                 <FormLabel>Website</FormLabel>
                                 <Input
-                                  name="organization.website"
-                                  value={organizationData.website || ''}
+                                  name="website"
+                                  value={profileData.website || ''}
                                   onChange={handleProfileChange}
                                   placeholder="Organization website"
                                   focusBorderColor="teal.400"
@@ -654,8 +651,8 @@ const Profile = () => {
                               <FormControl>
                                 <FormLabel>Contact Phone</FormLabel>
                                 <Input
-                                  name="organization.contactPhone"
-                                  value={organizationData.contactPhone || ''}
+                                  name="contactPhone"
+                                  value={profileData.contactPhone || ''}
                                   onChange={handleProfileChange}
                                   placeholder="Contact phone"
                                   focusBorderColor="teal.400"
@@ -666,8 +663,8 @@ const Profile = () => {
                               <FormControl>
                                 <FormLabel>Phone Code</FormLabel>
                                 <Input
-                                  name="organization.contactPhoneCode"
-                                  value={organizationData.contactPhoneCode || ''}
+                                  name="contactPhoneCode"
+                                  value={profileData.contactPhoneCode || ''}
                                   onChange={handleProfileChange}
                                   placeholder="Phone code (e.g. +1)"
                                   focusBorderColor="teal.400"
@@ -679,8 +676,8 @@ const Profile = () => {
                             <FormControl mt={5}>
                               <FormLabel>Organization Description</FormLabel>
                               <Textarea
-                                name="organization.organizationDescription"
-                                value={organizationData.organizationDescription || ''}
+                                name="organizationDescription"
+                                value={profileData.organizationDescription || ''}
                                 onChange={handleProfileChange}
                                 placeholder="Organization description"
                                 focusBorderColor="teal.400"

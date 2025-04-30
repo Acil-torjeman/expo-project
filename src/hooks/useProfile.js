@@ -23,46 +23,51 @@ const useProfile = () => {
     confirmPassword: '',
   });
 
-  // Load profile data
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setIsLoading(true);
-        const data = await profileService.getProfile();
-        setProfileData(data);
+ // Load profile data
+useEffect(() => {
+  const fetchProfile = async () => {
+    try {
+      setIsLoading(true);
+      const data = await profileService.getProfile();
+      
+      console.log('Profile data loaded:', data); // Debug log
+      
+      // Set profile data
+      setProfileData(data);
+      
+      // Set profile image URL based on user role
+      if (data) {
+        let imagePath = null;
         
-        // Set profile image URL based on user role
-        if (data) {
-          let imagePath = null;
-          
-          if (user?.role === 'exhibitor' && data.company) {
-            imagePath = data.company.companyLogoPath;
-          } else if (user?.role === 'organizer') {
-            imagePath = data.organizationLogoPath;
-          } else {
-            // Admin or fallback
-            imagePath = data.avatar;
-          }
-          
-          if (imagePath) {
-            setProfileImageUrl(profileService.getImageUrl(imagePath));
-          }
+        if (user?.role === 'exhibitor' && data.company) {
+          imagePath = data.company.companyLogoPath;
+        } else if (user?.role === 'organizer') {
+          imagePath = data.organizationLogoPath;
+        } else {
+          // Admin or fallback
+          imagePath = data.avatar;
         }
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: error.message || 'Could not load profile',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      } finally {
-        setIsLoading(false);
+        
+        if (imagePath) {
+          setProfileImageUrl(profileService.getImageUrl(imagePath));
+        }
       }
-    };
-    
-    fetchProfile();
-  }, [user, toast]);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Could not load profile',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  fetchProfile();
+}, [user, toast]);
+
 
   // Handle profile form changes
   const handleProfileChange = useCallback((e) => {

@@ -1,4 +1,5 @@
 // src/services/profile.service.js
+// src/services/profile.service.js
 import api from '../utils/api';
 import { getCompanyLogoUrl, getOrganizationLogoUrl, getProfileImageUrl } from '../utils/fileUtils';
 
@@ -13,7 +14,41 @@ class ProfileService {
   async getProfile() {
     try {
       const response = await api.get('/api/profile');
-      return response.data;
+      console.log('Profile API response:', response.data);  // Debug log
+      
+      // Check response structure
+      const data = response.data;
+      
+      // Handle different data structures that might come from the API
+      return {
+        // Basic user data - check in different possible locations
+        id: data._id || data.id || '',
+        username: data.username || (data.user && data.user.username) || '',
+        email: data.email || (data.user && data.user.email) || '',
+        role: data.role || (data.user && data.user.role) || '',
+        
+        // Exhibitor data
+        representativeFunction: data.representativeFunction || '',
+        personalPhone: data.personalPhone || '',
+        personalPhoneCode: data.personalPhoneCode || '',
+        
+        // Company data (for exhibitors)
+        company: data.company || {},
+        
+        // Organization data (for organizers)
+        organizationName: data.organizationName || '',
+        organizationAddress: data.organizationAddress || '',
+        postalCity: data.postalCity || '',
+        country: data.country || '',
+        contactPhone: data.contactPhone || '',
+        contactPhoneCode: data.contactPhoneCode || '',
+        website: data.website || '',
+        organizationDescription: data.organizationDescription || '',
+        organizationLogoPath: data.organizationLogoPath || '',
+        
+        // Avatar for admins
+        avatar: data.avatar || ''
+      };
     } catch (error) {
       console.error('Error fetching profile:', error);
       throw error;
@@ -27,8 +62,40 @@ class ProfileService {
    */
   async updateProfile(profileData) {
     try {
-      const response = await api.patch('/api/profile', profileData);
-      return response.data;
+      // Format data for API
+      const apiData = {
+        username: profileData.username,
+        email: profileData.email
+      };
+      
+      // Add role-specific data
+      if (profileData.representativeFunction || profileData.personalPhone || profileData.personalPhoneCode) {
+        apiData.representativeFunction = profileData.representativeFunction;
+        apiData.personalPhone = profileData.personalPhone;
+        apiData.personalPhoneCode = profileData.personalPhoneCode;
+      }
+      
+      // Add company data if present
+      if (profileData.company && Object.keys(profileData.company).length > 0) {
+        apiData.company = profileData.company;
+      }
+      
+      // Add organization data if present
+      if (profileData.organizationName || profileData.organizationAddress) {
+        apiData.organization = {
+          organizationName: profileData.organizationName,
+          organizationAddress: profileData.organizationAddress,
+          postalCity: profileData.postalCity,
+          country: profileData.country,
+          contactPhone: profileData.contactPhone,
+          contactPhoneCode: profileData.contactPhoneCode,
+          website: profileData.website,
+          organizationDescription: profileData.organizationDescription
+        };
+      }
+      
+      const response = await api.patch('/api/profile', apiData);
+      return this.getProfile(); // Fetch fresh data after update
     } catch (error) {
       console.error('Error updating profile:', error);
       throw error;
