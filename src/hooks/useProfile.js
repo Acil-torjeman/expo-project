@@ -353,9 +353,22 @@ const useProfile = () => {
       }
     }
     
+   
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [profileData, user]);
+  
+    const hasErrors = Object.keys(newErrors).length > 0;
+    if (hasErrors) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please correct the highlighted fields to save your profile.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+    
+    return !hasErrors;
+  }, [profileData, user, toast]);
 
   // Validate password form
   const validatePasswordForm = useCallback(() => {
@@ -393,15 +406,36 @@ const useProfile = () => {
   }, [profileData.company?.sector, user?.role]);
 
   // Save profile changes
-  const saveProfile = useCallback(async () => {
-    if (!validateForm()) return;
+ // Updated saveProfile function
+const saveProfile = useCallback(async () => {
+  if (!validateForm()) return;
+  
+  try {
+    setIsSaving(true);
     
-    try {
-      setIsSaving(true);
-      
-      // If there's a new profile image, upload it first
-      if (profileImage) {
+    // If there's a new profile image, upload it first
+    if (profileImage) {
+      try {
         await profileService.uploadProfileImage(profileImage);
+        
+        // Important: Fetch fresh profile data to get updated image paths
+        const updatedProfile = await profileService.getProfile();
+        setProfileData(updatedProfile);
+        
+        // Update image URL based on role
+        let imagePath = null;
+        if (user?.role === 'exhibitor' && updatedProfile.company) {
+          imagePath = updatedProfile.company.companyLogoPath;
+        } else if (user?.role === 'organizer') {
+          imagePath = updatedProfile.organizationLogoPath;
+        } else {
+          imagePath = updatedProfile.avatar;
+        }
+        
+        if (imagePath) {
+          const imageUrl = profileService.getImageUrl(imagePath, user?.role);
+          setProfileImageUrl(imageUrl);
+        }
         
         toast({
           title: 'Image updated',
@@ -410,42 +444,55 @@ const useProfile = () => {
           duration: 3000,
           isClosable: true,
         });
-      }
-      
-      // Save profile data
-      const updatedProfile = await profileService.updateProfile(profileData);
-      
-      // Update local profile data
-      setProfileData(updatedProfile);
-      
-      // Update auth context if needed
-      if (updateUser && updatedProfile) {
-        updateUser({
-          ...user,
-          username: updatedProfile.username,
-          email: updatedProfile.email
+      } catch (error) {
+        toast({
+          title: 'Image upload failed',
+          description: error.message || 'Failed to upload image',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
         });
+        // Continue with other profile updates even if image upload fails
       }
       
-      toast({
-        title: 'Profile updated',
-        description: 'Your profile has been updated successfully',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update profile',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsSaving(false);
+      // Reset profile image state
+      setProfileImage(null);
     }
-  }, [profileData, profileImage, validateForm, toast, updateUser, user]);
+    
+    // Save profile data
+    const updatedProfile = await profileService.updateProfile(profileData);
+    
+    // Update local profile data
+    setProfileData(updatedProfile);
+    
+    // Update auth context if needed
+    if (updateUser && updatedProfile) {
+      updateUser({
+        ...user,
+        username: updatedProfile.username,
+        email: updatedProfile.email
+      });
+    }
+    
+    toast({
+      title: 'Profile updated',
+      description: 'Your profile has been updated successfully',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  } catch (error) {
+    toast({
+      title: 'Error',
+      description: error.message || 'Failed to update profile',
+      status: 'error',
+      duration: 5000,
+      isClosable: true,
+    });
+  } finally {
+    setIsSaving(false);
+  }
+}, [profileData, profileImage, validateForm, toast, updateUser, user]);
 
   // Change password
   const changePassword = useCallback(async () => {
