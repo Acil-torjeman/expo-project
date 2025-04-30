@@ -162,8 +162,6 @@ const useProfile = () => {
       newErrors.email = 'Email is invalid';
     }
     
-    // Add more validation as needed based on user role
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [profileData]);
@@ -203,9 +201,8 @@ const useProfile = () => {
       
       // If there's a new profile image, upload it first
       if (profileImage) {
-        const uploadResult = await profileService.uploadProfileImage(profileImage);
+        await profileService.uploadProfileImage(profileImage);
         
-        // The image path is now managed by the backend based on user role
         toast({
           title: 'Image updated',
           description: 'Your profile image has been updated',
