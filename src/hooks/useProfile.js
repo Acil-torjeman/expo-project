@@ -24,7 +24,7 @@ const useProfile = () => {
   });
 
  // Load profile data
-useEffect(() => {
+ useEffect(() => {
   const fetchProfile = async () => {
     try {
       setIsLoading(true);
@@ -67,7 +67,6 @@ useEffect(() => {
   
   fetchProfile();
 }, [user, toast]);
-
 
   // Handle profile form changes
   const handleProfileChange = useCallback((e) => {

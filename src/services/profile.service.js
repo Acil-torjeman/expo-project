@@ -14,41 +14,43 @@ class ProfileService {
   async getProfile() {
     try {
       const response = await api.get('/api/profile');
-      console.log('Profile API response:', response.data);  // Debug log
+      console.log('Profile API response:', JSON.stringify(response.data));
       
-      // Check response structure
       const data = response.data;
       
-      // Handle different data structures that might come from the API
-      return {
-        // Basic user data - check in different possible locations
-        id: data._id || data.id || '',
-        username: data.username || (data.user && data.user.username) || '',
-        email: data.email || (data.user && data.user.email) || '',
-        role: data.role || (data.user && data.user.role) || '',
-        
-        // Exhibitor data
-        representativeFunction: data.representativeFunction || '',
-        personalPhone: data.personalPhone || '',
-        personalPhoneCode: data.personalPhoneCode || '',
-        
-        // Company data (for exhibitors)
-        company: data.company || {},
-        
-        // Organization data (for organizers)
-        organizationName: data.organizationName || '',
-        organizationAddress: data.organizationAddress || '',
-        postalCity: data.postalCity || '',
-        country: data.country || '',
-        contactPhone: data.contactPhone || '',
-        contactPhoneCode: data.contactPhoneCode || '',
-        website: data.website || '',
-        organizationDescription: data.organizationDescription || '',
-        organizationLogoPath: data.organizationLogoPath || '',
-        
-        // Avatar for admins
-        avatar: data.avatar || ''
+      // Create a comprehensive profile object that works for all roles
+      const profile = {
+        // Core user fields that should exist for all roles
+        id: data.id || data._id || '',
+        username: data.username || '',
+        email: data.email || '',
+        role: data.role || '',
+        avatar: data.avatar || '',
       };
+      
+      // Add exhibitor-specific fields if they exist
+      if (data.company || data.representativeFunction) {
+        profile.representativeFunction = data.representativeFunction || '';
+        profile.personalPhone = data.personalPhone || '';
+        profile.personalPhoneCode = data.personalPhoneCode || '';
+        profile.company = data.company || {};
+      }
+      
+      // Add organizer-specific fields if they exist
+      if (data.organizationName || data.organizationAddress) {
+        profile.organizationName = data.organizationName || '';
+        profile.organizationAddress = data.organizationAddress || '';
+        profile.postalCity = data.postalCity || '';
+        profile.country = data.country || '';
+        profile.contactPhone = data.contactPhone || '';
+        profile.contactPhoneCode = data.contactPhoneCode || '';
+        profile.website = data.website || '';
+        profile.organizationDescription = data.organizationDescription || '';
+        profile.organizationLogoPath = data.organizationLogoPath || '';
+      }
+      
+      console.log('Processed profile data:', profile);
+      return profile;
     } catch (error) {
       console.error('Error fetching profile:', error);
       throw error;
