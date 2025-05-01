@@ -120,11 +120,7 @@ const sidebarConfig = {
       icon: FiFileText, 
       label: 'Invoices',
     },
-    { 
-      path: '/exhibitor/payments', 
-      icon: FiCreditCard, 
-      label: 'Payments',
-    },
+
     // Common items
     { 
       path: '/profile', 

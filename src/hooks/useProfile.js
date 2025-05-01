@@ -425,36 +425,40 @@ const useProfile = () => {
           const uploadResult = await profileService.uploadProfileImage(profileImage);
           console.log('Upload result:', uploadResult);
           
-          // Important: Fetch fresh profile data to get updated image paths
+          // Get fresh data after image upload
           const updatedProfile = await profileService.getProfile();
+          
+          // IMPORTANT: Update our local state with new data before proceeding
           setProfileData(updatedProfile);
           
           // Update image URL based on role
-          let imagePath = null;
           if (user?.role === 'exhibitor' && updatedProfile.company) {
-            imagePath = updatedProfile.company.companyLogoPath;
+            const imageUrl = profileService.getImageUrl(updatedProfile.company.companyLogoPath, user?.role);
+            setProfileImageUrl(imageUrl);
           } else if (user?.role === 'organizer') {
-            imagePath = updatedProfile.organizationLogoPath;
+            const imageUrl = profileService.getImageUrl(updatedProfile.organizationLogoPath, user?.role);
+            setProfileImageUrl(imageUrl);
           } else {
-            imagePath = updatedProfile.avatar;
-          }
-          
-          if (imagePath) {
-            const imageUrl = profileService.getImageUrl(imagePath, user?.role);
+            const imageUrl = profileService.getImageUrl(updatedProfile.avatar, user?.role);
             setProfileImageUrl(imageUrl);
           }
           
+          // After image upload, SKIP the profile update to avoid overwriting the logo
           toast({
-            title: 'Image updated',
-            description: 'Your profile image has been updated',
+            title: 'Profile updated',
+            description: 'Your profile image has been updated successfully',
             status: 'success',
             duration: 3000,
             isClosable: true,
           });
+          
+          // Reset profile image state
+          setProfileImage(null);
+          
+          // Return early - do not proceed with profile update
+          return;
         } catch (error) {
           console.error('Image upload error:', error);
-          console.error('Error details:', error.response?.data);
-          
           toast({
             title: 'Image upload failed',
             description: error.message || 'Failed to upload image',
@@ -462,17 +466,11 @@ const useProfile = () => {
             duration: 5000,
             isClosable: true,
           });
-          // Continue with other profile updates even if image upload fails
         }
-        
-        // Reset profile image state
-        setProfileImage(null);
       }
       
-      // Save profile data
+      // Only proceed with profile data update if no image was uploaded
       const updatedProfile = await profileService.updateProfile(profileData);
-      
-      // Update local profile data
       setProfileData(updatedProfile);
       
       // Update auth context if needed
@@ -493,7 +491,6 @@ const useProfile = () => {
       });
     } catch (error) {
       console.error('Profile update error:', error);
-      
       toast({
         title: 'Error',
         description: error.message || 'Failed to update profile',
@@ -505,7 +502,7 @@ const useProfile = () => {
       setIsSaving(false);
     }
   }, [profileData, profileImage, validateForm, toast, updateUser, user]);
-
+  
   // Change password
   const changePassword = useCallback(async () => {
     if (!validatePasswordForm()) return;

@@ -27,7 +27,7 @@ import {
   FiBell,
   FiMessageCircle,
 } from 'react-icons/fi';
-import SearchBar from './SearchBar';
+
 import ThemeToggleButton from '../ui/ThemeToggleButton';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
@@ -84,11 +84,6 @@ const Topbar = ({ title }) => {
     
     fetchUserData();
   }, [user]);
-  
-  // Mock data for notifications and messages
-  // In a real app, these would come from a context or service
-  const unreadNotifications = '';
-  const unreadMessages = '';
   
   // Format role name for display
   const formatRoleName = (role) => {
@@ -185,60 +180,10 @@ const Topbar = ({ title }) => {
 
         
 
-        {/* Right side - Theme toggle, Notifications, messages, profile */}
+        {/* Right side - Theme toggle, profile */}
         <HStack spacing={3}>
           {/* Theme toggle button */}
           <ThemeToggleButton size="sm" />
-
-          {/* Notifications */}
-          <Tooltip label="Notifications" hasArrow>
-            <Box position="relative">
-              <IconButton
-                aria-label="Notifications"
-                icon={<FiBell />}
-                variant="ghost"
-                colorScheme="teal"
-                onClick={() => navigate(`/${activeUser?.role || 'admin'}/notifications`)}
-              />
-              {unreadNotifications > 0 && (
-                <Badge
-                  position="absolute"
-                  top="0"
-                  right="0"
-                  colorScheme="red"
-                  borderRadius="full"
-                  transform="translate(25%, -25%)"
-                >
-                  {unreadNotifications}
-                </Badge>
-              )}
-            </Box>
-          </Tooltip>
-
-          {/* Messages */}
-          <Tooltip label="Messages" hasArrow>
-            <Box position="relative" display={{ base: 'none', md: 'flex' }}>
-              <IconButton
-                aria-label="Messages"
-                icon={<FiMessageCircle />}
-                variant="ghost"
-                colorScheme="teal"
-                onClick={() => navigate(`/${activeUser?.role}/messages`)}
-              />
-              {unreadMessages > 0 && (
-                <Badge
-                  position="absolute"
-                  top="0"
-                  right="0"
-                  colorScheme="red"
-                  borderRadius="full"
-                  transform="translate(25%, -25%)"
-                >
-                  {unreadMessages}
-                </Badge>
-              )}
-            </Box>
-          </Tooltip>
 
           {/* User Profile Menu */}
           <Menu>
@@ -279,23 +224,6 @@ const Topbar = ({ title }) => {
               boxShadow="lg"
               borderRadius="lg"
             >
-              <MenuItem 
-                icon={<FiUser />}
-                onClick={() => navigate(`/${activeUser?.role || 'admin'}/profile`)}
-                borderRadius="md"
-                mb={1}
-              >
-                Profile
-              </MenuItem>
-              <MenuItem 
-                icon={<FiSettings />}
-                onClick={() => navigate(`/${activeUser?.role || 'admin'}/settings`)}
-                borderRadius="md"
-                mb={1}
-              >
-                Settings
-              </MenuItem>
-              <Divider my={2} />
               <MenuItem 
                 icon={<FiLogOut />}
                 onClick={handleLogout}
