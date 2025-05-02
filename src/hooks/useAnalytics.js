@@ -56,7 +56,14 @@ const useAnalytics = () => {
       
       if (response.data) {
         console.log('Analytics data received:', response.data);
-        setAnalyticsData(response.data);
+        
+        // Check if received data has the expected structure
+        if (!response.data.kpis) {
+          console.warn('Received data missing KPIs structure');
+          setError('Incomplete data received from server');
+        } else {
+          setAnalyticsData(response.data);
+        }
       } else {
         console.warn('Received empty or invalid analytics data');
         setError('Received empty data from server');
@@ -64,14 +71,22 @@ const useAnalytics = () => {
     } catch (error) {
       console.error('Error fetching analytics data:', error);
       
-      const errorMessage = error.response?.data?.message || 
+      // Handle specific errors
+      if (error.response?.status === 404) {
+        setError('No organizer profile found for your account');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to view analytics');
+      } else {
+        const errorMessage = error.response?.data?.message || 
                           error.message || 
                           'Failed to fetch analytics data';
+        
+        setError(errorMessage);
+      }
       
-      setError(errorMessage);
       toast({
         title: 'Error',
-        description: errorMessage,
+        description: error.response?.data?.message || 'Failed to fetch analytics data',
         status: 'error',
         duration: 5000,
         isClosable: true,
