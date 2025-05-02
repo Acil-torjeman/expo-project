@@ -17,6 +17,7 @@
     "@emotion/styled": "^11.14.0",
     "axios": "^1.8.2",
     "body-parser": "^1.20.3",
+    "chart.js": "^4.4.9",
     "cors": "^2.8.5",
     "expess": "^0.0.1-security",
     "express": "^4.21.2",
