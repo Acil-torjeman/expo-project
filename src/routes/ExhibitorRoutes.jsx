@@ -6,21 +6,21 @@ import { UserRole } from '../constants/roles';
 import NotFound from '../pages/NotFound';
 
 // Exhibitor pages
-import ExhibitorDashboard from '../pages/exhibitor/Dashboard';
+import ExhibitorDashboard from '../pages/Exhibitor/Dashboard';
 import ExhibitorEvents from '../pages/Exhibitor/Events';
 import ExhibitorEventDetail from '../pages/Exhibitor/EventDetail';
-import ExhibitorMessages from '../pages/exhibitor/Messages';
-import ExhibitorRegistrations from '../pages/exhibitor/Registrations';
+import ExhibitorMessages from '../pages/Exhibitor/Messages';
+import ExhibitorRegistrations from '../pages/Exhibitor/Registrations';
 import ExhibitorRegistrationDetail from '../pages/Exhibitor/RegistrationDetail';
 import RegistrationWizard from '../pages/Exhibitor/RegistrationWizard';
-import ExhibitorStands from '../pages/exhibitor/Stands';
-import ExhibitorEquipment from '../pages/exhibitor/Equipment';
-import ExhibitorInvoices from '../pages/exhibitor/Invoices';
+import ExhibitorStands from '../pages/Exhibitor/Stands';
+import ExhibitorEquipment from '../pages/Exhibitor/Equipment';
+import ExhibitorInvoices from '../pages/Exhibitor/Invoices';
 import InvoiceDetails from '../pages/Exhibitor/InvoiceDetails';
 import PaymentSuccess from '../pages/Exhibitor/PaymentSuccess';
 import PaymentCancel from '../pages/Exhibitor/PaymentCancel';
-import ExhibitorNotifications from '../pages/exhibitor/Notifications';
-import ExhibitorSettings from '../pages/exhibitor/Settings';
+import ExhibitorNotifications from '../pages/Exhibitor/Notifications';
+import ExhibitorSettings from '../pages/Exhibitor/Settings';
 
 /**
  * Configuration for exhibitor routes
