@@ -11,7 +11,7 @@ const useAnalytics = () => {
   const [events, setEvents] = useState([]);
   const [filters, setFilters] = useState({
     eventId: '',
-    period: 'month' // Default to month
+    period: 'month'
   });
 
   const toast = useToast();
