@@ -16,6 +16,14 @@ const DashboardLayout = ({ children, title }) => {
   const { isOpen, isMobile } = useSidebar();
   const bgColor = useColorModeValue('gray.50', 'gray.900');
 
+  // Calculate main content margin based on sidebar state and device type
+  const getMainContentMargin = () => {
+    if (isMobile) {
+      return 0; // No margin on mobile regardless of sidebar state
+    }
+    return isOpen ? '240px' : '80px'; // Desktop margins
+  };
+
   return (
     <Box height="100vh" overflow="hidden" position="relative" bg={bgColor}>
       {/* Sidebar */}

@@ -1,5 +1,5 @@
 // src/components/common/navigation/Topbar.jsx
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Box,
   Flex,
@@ -29,7 +29,7 @@ import {
 } from 'react-icons/fi';
 
 import ThemeToggleButton from '../ui/ThemeToggleButton';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useSidebar } from '../../../context/SidebarContext';
 import { useDashboard } from '../../../context/DashboardContext';
@@ -44,11 +44,12 @@ import { getRoleColorScheme } from '../../../constants/roles';
  */
 const Topbar = ({ title }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const { toggleSidebar, isMobile } = useSidebar();
   const { currentPageTitle } = useDashboard();
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [userData, setUserData] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
   
   // Use provided title or get from dashboard context
   const pageTitle = title || currentPageTitle;
@@ -65,7 +66,7 @@ const Topbar = ({ title }) => {
   );
   
   // Fetch the latest user data from backend
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchUserData = async () => {
       if (user && user.id) {
         setLoading(true);
@@ -104,6 +105,12 @@ const Topbar = ({ title }) => {
     } catch (error) {
       console.error("Error during logout:", error);
     }
+  };
+  
+  // Handle menu button click - specifically for mobile sidebar toggle
+  const handleMenuClick = () => {
+    console.log("Menu button clicked"); // Debug log
+    toggleSidebar();
   };
   
   // Get the display name from the user data
@@ -164,7 +171,7 @@ const Topbar = ({ title }) => {
           <IconButton
             aria-label="Toggle Sidebar"
             icon={<FiMenu />}
-            onClick={toggleSidebar}
+            onClick={handleMenuClick}
             variant="ghost"
             color="teal.500"
             size="md"
@@ -177,8 +184,6 @@ const Topbar = ({ title }) => {
             {pageTitle}
           </Text>
         </HStack>
-
-        
 
         {/* Right side - Theme toggle, profile */}
         <HStack spacing={3}>
