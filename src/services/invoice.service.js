@@ -1,6 +1,7 @@
 // src/services/invoice.service.js
 import api from '../utils/api';
 import { getInvoicePdfUrl } from '../utils/fileUtils';
+import registrationService from './registration.service';
 
 class InvoiceService {
   async getInvoiceByRegistration(registrationId) {
@@ -82,9 +83,6 @@ class InvoiceService {
   // Méthode alternative pour récupérer les factures via les inscriptions
   async getInvoicesViaRegistrations() {
     try {
-      // Importer le service de registrations dynamiquement
-      const registrationService = await import('./registration.service').then(m => m.default);
-      
       // Obtenir les inscriptions de l'utilisateur
       const registrations = await registrationService.getMyRegistrations();
       console.log('Registrations found:', registrations.length);

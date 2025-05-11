@@ -39,6 +39,7 @@ import Table from '../../components/common/ui/Table';
 import InvoiceFilterForm from '../../components/exhibitor/invoices/InvoiceFilterForm';
 import useInvoices from '../../hooks/useInvoices';
 import { motion } from 'framer-motion';
+import paymentService from '../../services/payment.service';
 
 // Use proper motion component
 const MotionBox = motion.div;
@@ -79,9 +80,6 @@ const ExhibitorInvoices = () => {
   const handlePayment = useCallback(async (invoiceId) => {
     try {
       setPaymentProcessing(prev => ({ ...prev, [invoiceId]: true }));
-      
-      // Import dynamique du service de paiement
-      const paymentService = await import('../../services/payment.service').then(m => m.default);
       
       // Créer le paiement et obtenir l'URL de redirection
       const baseUrl = `${window.location.protocol}//${window.location.host}`;
