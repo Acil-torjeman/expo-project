@@ -7,30 +7,39 @@ const SidebarContext = createContext();
 export const useSidebar = () => useContext(SidebarContext);
 
 export function SidebarProvider({ children }) {
+  // Initial state depends on screen size
+  const currentBreakpoint = useBreakpointValue({ base: 'base', md: 'md' });
   const [isOpen, setIsOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   
-  const isMobile = useBreakpointValue({ base: true, md: false });
-  
+  // Update isMobile state when breakpoint changes
   useEffect(() => {
-    if (isMobile && isOpen) {
+    setIsMobile(currentBreakpoint === 'base');
+    
+    // On mobile, sidebar should initially be closed
+    if (currentBreakpoint === 'base') {
       setIsOpen(false);
-    } else if (!isMobile && !isOpen) {
+    } else {
       setIsOpen(true);
     }
-  }, [isMobile]);
+  }, [currentBreakpoint]);
   
+  // Toggle sidebar open/closed
   const toggleSidebar = () => {
     setIsOpen(prev => !prev);
   };
   
+  // Force sidebar open
   const openSidebar = () => {
     setIsOpen(true);
   };
   
+  // Force sidebar closed
   const closeSidebar = () => {
     setIsOpen(false);
   };
   
+  // Value to be provided by context
   const contextValue = {
     isOpen,
     isMobile,
