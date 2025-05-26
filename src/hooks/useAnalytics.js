@@ -64,26 +64,23 @@ const useAnalytics = () => {
 
       const response = await api.get(endpoint);
       console.log('Analytics API response status:', response.status);
-      console.log('Analytics API response headers:', response.headers);
 
       if (response.data) {
         console.log('Analytics data received:', response.data);
 
-        // Vérifier si les KPIs contiennent des valeurs non nulles
-        const hasNonZeroValues = response.data.kpis && (
-          response.data.kpis.processingTime?.value > 0 ||
-          response.data.kpis.paymentTime?.value > 0 ||
-          response.data.kpis.pendingRequests?.value > 0 ||
-          response.data.kpis.standsOccupation?.occupied > 0
-        );
-
-        console.log('Has non-zero values:', hasNonZeroValues);
-
-        // Check if received data has the expected structure
+        // Check if received data has the expected structure for new KPIs
         if (!response.data.kpis) {
           console.warn('Received data missing KPIs structure');
           setError('Incomplete data received from server');
         } else {
+          // Validate that we have the new KPIs
+          const requiredKpis = ['processingTime', 'paymentTime', 'pendingRequests', 'equipmentReserved', 'totalRevenue'];
+          const hasRequiredKpis = requiredKpis.every(kpi => response.data.kpis[kpi] !== undefined);
+          
+          if (!hasRequiredKpis) {
+            console.warn('Missing required KPIs in response:', response.data.kpis);
+          }
+          
           setAnalyticsData(response.data);
         }
       } else {

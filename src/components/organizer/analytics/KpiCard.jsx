@@ -33,7 +33,10 @@ const KpiCard = ({
       return `${value}%`;
     }
     if (unit === 'currency') {
-      return `$${value}`;
+      return `$${value.toLocaleString()}`;
+    }
+    if (unit === 'count') {
+      return value.toLocaleString();
     }
     return value;
   };
@@ -69,7 +72,7 @@ const KpiCard = ({
           {trend !== 0 && (
             <StatHelpText>
               <StatArrow type={trend > 0 ? 'increase' : 'decrease'} />
-              {Math.abs(trend)}%
+              {Math.abs(trend).toFixed(1)}%
             </StatHelpText>
           )}
         </Stat>

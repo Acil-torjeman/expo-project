@@ -18,9 +18,8 @@ import {
 import { 
   FiClock, 
   FiDollarSign, 
-  FiCalendar, 
   FiUsers, 
-  FiGrid,
+  FiPackage,
   FiRefreshCw 
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
@@ -30,10 +29,9 @@ import KpiCard from '../../components/organizer/analytics/KpiCard';
 import ChartContainer from '../../components/organizer/analytics/ChartContainer';
 import TimeProcessingChart from '../../components/organizer/analytics/TimeProcessingChart';
 import PaymentTimeChart from '../../components/organizer/analytics/PaymentTimeChart';
-import ValidationChart from '../../components/organizer/analytics/ValidationChart';
-import StandsOccupationChart from '../../components/organizer/analytics/StandsOccupationChart';
+import EquipmentReservedChart from '../../components/organizer/analytics/EquipmentReservedChart';
+import RevenueChart from '../../components/organizer/analytics/RevenueChart';
 import PendingRequestsChart from '../../components/organizer/analytics/PendingRequestsChart';
-import GaugeChart from '../../components/organizer/analytics/GaugeChart';
 
 const Analytics = () => {
   const {
@@ -69,7 +67,7 @@ const Analytics = () => {
         {/* Header */}
         <Heading size="lg" mb={2}>Analytics Dashboard</Heading>
         <Text color="gray.500" mb={6}>
-          Monitor event performance and operational efficiency metrics
+          Monitor event performance and revenue metrics
         </Text>
         
         {/* Filters */}
@@ -104,7 +102,7 @@ const Analytics = () => {
         )}
         
         {/* KPI Cards */}
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} mb={6}>
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 5 }} spacing={4} mb={6}>
           {renderWithSkeleton(
             <KpiCard
               title="Avg. Processing Time"
@@ -122,19 +120,30 @@ const Analytics = () => {
               value={analyticsData?.kpis?.paymentTime?.value || 0}
               unit="hours"
               trend={analyticsData?.kpis?.paymentTime?.trend || 0}
-              icon={FiDollarSign}
+              icon={FiClock}
               color="blue"
             />
           )}
           
           {renderWithSkeleton(
             <KpiCard
-              title="Validated Before Deadline"
-              value={analyticsData?.kpis?.validatedBeforeDeadline?.value || 0}
-              unit="percent"
-              trend={analyticsData?.kpis?.validatedBeforeDeadline?.trend || 0}
-              icon={FiCalendar}
+              title="Equipment Reserved"
+              value={analyticsData?.kpis?.equipmentReserved?.value || 0}
+              unit="count"
+              trend={analyticsData?.kpis?.equipmentReserved?.trend || 0}
+              icon={FiPackage}
               color="green"
+            />
+          )}
+          
+          {renderWithSkeleton(
+            <KpiCard
+              title="Total Revenue"
+              value={analyticsData?.kpis?.totalRevenue?.value || 0}
+              unit="currency"
+              trend={analyticsData?.kpis?.totalRevenue?.trend || 0}
+              icon={FiDollarSign}
+              color="purple"
             />
           )}
           
@@ -150,7 +159,7 @@ const Analytics = () => {
           )}
         </SimpleGrid>
         
-        {/* Main Charts Section */}
+        {/* Charts Section */}
         <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={6} mb={6}>
           {/* Processing Time Chart */}
           {renderWithSkeleton(
@@ -162,35 +171,15 @@ const Analytics = () => {
             </ChartContainer>
           )}
           
-          {/* Gauge Charts */}
-          <ChartContainer title="Key Metrics">
-            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-              {renderWithSkeleton(
-                <Box>
-                  <Text fontWeight="medium" mb={2} textAlign="center">Processing Efficiency</Text>
-                  <GaugeChart 
-                    value={analyticsData?.kpis?.processingTime?.value || 0}
-                    maxValue={24} // 24 hours as target
-                    label="hrs"
-                    colorScheme={['#38A169', '#ECC94B', '#E53E3E']}
-                    inverse={true} // Lower is better for processing time
-                  />
-                </Box>
-              )}
-              
-              {renderWithSkeleton(
-                <Box>
-                  <Text fontWeight="medium" mb={2} textAlign="center">Stand Occupancy</Text>
-                  <GaugeChart 
-                    value={analyticsData?.kpis?.standsOccupation?.occupancyRate || 0}
-                    maxValue={100}
-                    label="%"
-                    colorScheme={['#38A169', '#ECC94B', '#E53E3E']} // Standard color scheme (green is good)
-                  />
-                </Box>
-              )}
-            </SimpleGrid>
-          </ChartContainer>
+          {/* Revenue Chart */}
+          {renderWithSkeleton(
+            <ChartContainer 
+              title="Revenue Overview"
+              description="Total revenue from paid invoices"
+            >
+              <RevenueChart data={analyticsData} />
+            </ChartContainer>
+          )}
         </Grid>
         
         {/* Secondary Charts */}
@@ -202,45 +191,20 @@ const Analytics = () => {
             </ChartContainer>
           )}
           
-          {/* Validated Before Deadline Chart */}
+          {/* Equipment Reserved Chart */}
           {renderWithSkeleton(
-            <ChartContainer title="Validations Before Deadline">
-              <ValidationChart data={analyticsData} />
+            <ChartContainer title="Equipment Reserved">
+              <EquipmentReservedChart data={analyticsData} />
             </ChartContainer>
           )}
           
-          {/* Stands Occupation Chart */}
+          {/* Pending Requests Chart */}
           {renderWithSkeleton(
-            <ChartContainer title="Stands Occupation">
-              <StandsOccupationChart data={analyticsData} />
+            <ChartContainer title="Pending Requests">
+              <PendingRequestsChart data={analyticsData} />
             </ChartContainer>
           )}
         </SimpleGrid>
-        
-        {/* Pending Requests Chart - Full Width */}
-        {renderWithSkeleton(
-          <ChartContainer 
-            title="Pending Registration Requests" 
-            description="Number of pending registration requests over time"
-            mb={6}
-          >
-            <PendingRequestsChart data={analyticsData} />
-          </ChartContainer>
-        )}
-        
-        {/* Stands Reserved Before Event - Highlight Metric */}
-        {renderWithSkeleton(
-          <ChartContainer 
-            title={`Stands Reserved ${analyticsData?.kpis?.standsBeforeEvent?.daysBeforeEvent || 30} Days Before Event`}
-            description="Percentage of stands reserved before the event start date"
-          >
-            <Flex height="100px" align="center" justify="center">
-              <Text fontSize="5xl" fontWeight="bold" color={useColorModeValue('purple.500', 'purple.300')}>
-                {analyticsData?.kpis?.standsBeforeEvent?.value || 0}%
-              </Text>
-            </Flex>
-          </ChartContainer>
-        )}
       </Box>
     </DashboardLayout>
   );
