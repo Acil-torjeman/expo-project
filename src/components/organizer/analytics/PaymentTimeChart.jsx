@@ -10,29 +10,33 @@ const PaymentTimeChart = ({ data }) => {
   useEffect(() => {
     if (!chartRef.current) return;
 
-    // If chart already exists, destroy it
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
 
     const ctx = chartRef.current.getContext('2d');
     
-    // Check if we have valid data
-    if (!data || !data.kpis || !data.kpis.paymentTime) {
-      // Create empty chart
+    if (!data || !data.kpis || !data.kpis.paymentTimeDistribution) {
       chartInstance.current = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: [],
+          labels: ['Under 24h', '1-2 days', '3-5 days', '1 week+', '2 weeks+'],
           datasets: [{
-            data: [],
+            data: [0, 0, 0, 0, 0],
             backgroundColor: '#4299E1'
           }]
         },
         options: {
           scales: {
             y: {
-              beginAtZero: true
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: '% of Payments'
+              },
+              ticks: {
+                callback: (value) => `${value}%`
+              }
             }
           },
           maintainAspectRatio: false,
@@ -44,35 +48,16 @@ const PaymentTimeChart = ({ data }) => {
       return;
     }
     
-    // Get payment time from the real data
-    const paymentTime = data.kpis.paymentTime.value;
-    
-    // Define time categories
-    const labels = ['< 24h', '1-2 days', '3-5 days', '1 week+', '2 weeks+'];
-    
-    // Create a realistic distribution based on the average payment time
-    let distribution = [];
-    
-    if (paymentTime < 24) {
-      // Most payments under 24 hours
-      distribution = [65, 20, 10, 4, 1];
-    } else if (paymentTime < 48) {
-      // Most payments under 48 hours
-      distribution = [30, 45, 15, 8, 2];
-    } else if (paymentTime < 120) {
-      // Most payments under 5 days
-      distribution = [15, 25, 40, 15, 5];
-    } else {
-      // Longer payment times
-      distribution = [10, 15, 25, 35, 15];
-    }
+    const distributionData = data.kpis.paymentTimeDistribution;
+    const labels = distributionData.labels || ['Under 24h', '1-2 days', '3-5 days', '1 week+', '2 weeks+'];
+    const values = distributionData.data || [0, 0, 0, 0, 0];
     
     const chartData = {
       labels: labels,
       datasets: [
         {
           label: 'Payment Distribution',
-          data: distribution,
+          data: values,
           backgroundColor: [
             '#4299E1', // blue.400
             '#63B3ED', // blue.300
@@ -122,8 +107,7 @@ const PaymentTimeChart = ({ data }) => {
     };
   }, [data]);
 
-  // If no data available, show a message
-  if (!data || !data.kpis || !data.kpis.paymentTime) {
+  if (!data || !data.kpis || !data.kpis.paymentTimeDistribution) {
     return (
       <Box height="300px" display="flex" alignItems="center" justifyContent="center">
         <Text color="gray.500">No payment time data available</Text>
@@ -131,9 +115,16 @@ const PaymentTimeChart = ({ data }) => {
     );
   }
 
+  const totalPayments = data.kpis.paymentTimeDistribution.totalPayments || 0;
+
   return (
     <Box height="300px">
       <canvas ref={chartRef} />
+      {totalPayments > 0 && (
+        <Text fontSize="sm" color="gray.500" mt={2} textAlign="center">
+          Based on {totalPayments} payment{totalPayments !== 1 ? 's' : ''}
+        </Text>
+      )}
     </Box>
   );
 };

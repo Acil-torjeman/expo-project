@@ -1,11 +1,10 @@
+// src/hooks/useOrganizerSignup.js
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useToast } from '@chakra-ui/react';
 import axios from 'axios';
 
-// URL de l'API backend
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Liste de pays de secours si l'API échoue
 const fallbackCountries = [
   { name: 'France', code: '+33', flag: 'https://flagcdn.com/w320/fr.png' },
   { name: 'United States', code: '+1', flag: 'https://flagcdn.com/w320/us.png' },
@@ -14,11 +13,7 @@ const fallbackCountries = [
   { name: 'Spain', code: '+34', flag: 'https://flagcdn.com/w320/es.png' },
 ];
 
-/**
- * Définition des champs du formulaire d'inscription des organisateurs
- */
 const ORGANIZER_FORM_FIELDS = {
-  // Organization details
   organizationName: '',
   organizationAddress: '',
   postalCity: '',
@@ -28,11 +23,7 @@ const ORGANIZER_FORM_FIELDS = {
   website: '',
   organizationDescription: '',
   organizationLogo: null,
-  
-  // Nom d'utilisateur pour l'entité user
   username: '',
-  
-  // Account details
   email: '',
   password: '',
   confirmPassword: '',
@@ -40,25 +31,19 @@ const ORGANIZER_FORM_FIELDS = {
   dataConsent: false,
 };
 
-// Liste des champs fichiers
-const FILE_FIELDS = ['organizationLogo'];
-
-// Champs obligatoires par étape pour la validation
 const REQUIRED_FIELDS_BY_STEP = [
-  // Étape 0: Organization details et username
   [
     'organizationName', 'organizationAddress', 'postalCity', 'country',
     'contactPhone', 'organizationLogo', 'username'
   ],
-  // Étape 1: Account details
   [
     'email', 'password', 'confirmPassword', 'consent', 'dataConsent'
   ]
 ];
+
 const useOrganizerSignup = () => {
   const toast = useToast();
   
-  // États UI
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -66,18 +51,12 @@ const useOrganizerSignup = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [countries, setCountries] = useState(fallbackCountries);
   const [isLoadingCountries, setIsLoadingCountries] = useState(true);
-  
-  // États de validation
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   
-  // Valeurs du formulaire (non-contrôlé pour performance)
   const formValues = useRef({...ORGANIZER_FORM_FIELDS});
-  
-  // Timeouts de validation
   const validationTimeoutsRef = useRef({});
   
-  // Fonction de validation d'un champ
   const validateField = useCallback((name, value) => {
     if (validationTimeoutsRef.current[name]) {
       clearTimeout(validationTimeoutsRef.current[name]);
@@ -87,7 +66,6 @@ const useOrganizerSignup = () => {
       const newErrors = { ...errors };
       
       switch (name) {
-        // Champs texte obligatoires simples
         case 'organizationName':
         case 'organizationAddress':
         case 'postalCity':
@@ -101,7 +79,6 @@ const useOrganizerSignup = () => {
           }
           break;
         
-        // Champs téléphone (validation de format)
         case 'contactPhone':
           if (!value || value.trim() === '') {
             newErrors[name] = `${name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`;
@@ -116,7 +93,6 @@ const useOrganizerSignup = () => {
           }
           break;
         
-        // Email (validation de format)
         case 'email':
           if (!value || value.trim() === '') {
             newErrors[name] = 'Email is required';
@@ -127,7 +103,6 @@ const useOrganizerSignup = () => {
           }
           break;
         
-        // Mot de passe (complexité)
         case 'password':
           if (!value) {
             newErrors[name] = 'Password is required';
@@ -139,7 +114,6 @@ const useOrganizerSignup = () => {
             delete newErrors[name];
           }
           
-          // Valider aussi confirmPassword si déjà touché
           if (touched.confirmPassword) {
             if (value !== formValues.current.confirmPassword) {
               newErrors.confirmPassword = 'Passwords must match';
@@ -149,7 +123,6 @@ const useOrganizerSignup = () => {
           }
           break;
         
-        // Confirmation de mot de passe
         case 'confirmPassword':
           if (!value) {
             newErrors[name] = 'Please confirm your password';
@@ -160,7 +133,6 @@ const useOrganizerSignup = () => {
           }
           break;
         
-        // Cases à cocher
         case 'consent':
         case 'dataConsent':
           if (!value) {
@@ -170,17 +142,14 @@ const useOrganizerSignup = () => {
           }
           break;
         
-        // Fichiers (validation de type et taille)
         case 'organizationLogo':
           if (!value) {
             newErrors[name] = `${name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`;
           } else {
-            // Taille maximale: 2MB
             const maxSize = 2 * 1024 * 1024;
             if (value.size > maxSize) {
               newErrors[name] = `File is too large (max ${maxSize / (1024 * 1024)}MB)`;
             } else {
-              // Types de fichiers acceptés
               const validTypes = ['image/png', 'image/jpeg', 'image/gif'];
                 
               if (!validTypes.includes(value.type)) {
@@ -201,23 +170,19 @@ const useOrganizerSignup = () => {
     }, 200);
   }, [errors, touched]);
   
-  // Valider toute l'étape actuelle
   const validateCurrentStep = useCallback(() => {
     const currentFields = REQUIRED_FIELDS_BY_STEP[step] || [];
     
-    // Marquer tous les champs comme touchés
     const newTouched = { ...touched };
     currentFields.forEach(field => {
       newTouched[field] = true;
     });
     setTouched(newTouched);
     
-    // Valider chaque champ
     const newErrors = { ...errors };
     currentFields.forEach(field => {
       const value = formValues.current[field];
       
-      // Réutilisation de la logique de validateField mais en synchrone
       switch (field) {
         case 'organizationName':
         case 'organizationAddress':
@@ -310,16 +275,13 @@ const useOrganizerSignup = () => {
     
     setErrors(newErrors);
     
-    // Vérifier s'il y a des erreurs pour cette étape
     const hasErrors = currentFields.some(field => !!newErrors[field]);
     return !hasErrors;
   }, [step, errors, touched]);
   
-  // Chargement des pays
   useEffect(() => {
     const fetchCountries = async () => {
       try {
-        // Vérifier le cache
         const cachedData = localStorage.getItem('countries-cache');
         const cacheTimestamp = localStorage.getItem('countries-cache-timestamp');
         
@@ -335,7 +297,6 @@ const useOrganizerSignup = () => {
           }
         }
         
-        // Charger depuis l'API
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
@@ -361,14 +322,12 @@ const useOrganizerSignup = () => {
           })
           .sort((a, b) => a.name.localeCompare(b.name));
         
-        // Placer la Tunisie en premier
         const TunisiaIndex = formattedCountries.findIndex(c => c.name === 'Tunisia');
         if (TunisiaIndex > 0) {
           const Tunisia = formattedCountries.splice(TunisiaIndex, 1)[0];
           formattedCountries.unshift(Tunisia);
         }
         
-        // Mettre en cache
         try {
           localStorage.setItem('countries-cache', JSON.stringify(formattedCountries));
           localStorage.setItem('countries-cache-timestamp', Date.now().toString());
@@ -388,7 +347,6 @@ const useOrganizerSignup = () => {
     fetchCountries();
   }, []);
   
-  // Gérer le changement de valeur d'un champ
   const handleChange = useCallback((e) => {
     const { name, value, type, checked, files } = e.target;
     
@@ -405,14 +363,12 @@ const useOrganizerSignup = () => {
     }
   }, [touched, validateField]);
   
-  // Gérer la perte de focus
   const handleBlur = useCallback((e) => {
     const { name } = e.target;
     setTouched(prev => ({ ...prev, [name]: true }));
     validateField(name, formValues.current[name]);
   }, [validateField]);
   
-  // Gérer le changement de pays
   const handleCountryChange = useCallback((countryName) => {
     const selectedCountry = countries.find(c => c.name === countryName);
     
@@ -426,7 +382,6 @@ const useOrganizerSignup = () => {
     }
   }, [countries, touched.country, validateField]);
   
-  // Gérer le changement de code téléphonique
   const handlePhoneCodeChange = useCallback((fieldName, code) => {
     formValues.current[fieldName] = code;
     
@@ -435,7 +390,6 @@ const useOrganizerSignup = () => {
     }
   }, [touched, validateField]);
   
-  // Passer à l'étape suivante
   const nextStep = useCallback(() => {
     const isValid = validateCurrentStep();
     
@@ -443,7 +397,6 @@ const useOrganizerSignup = () => {
       window.scrollTo(0, 0);
       setStep(prev => prev + 1);
     } else if (!isValid) {
-      // Scroller vers la première erreur
       setTimeout(() => {
         const firstErrorField = Object.keys(errors).find(field => !!errors[field]);
         if (firstErrorField) {
@@ -465,7 +418,6 @@ const useOrganizerSignup = () => {
     }
   }, [step, validateCurrentStep, errors, toast]);
   
-  // Revenir à l'étape précédente
   const prevStep = useCallback(() => {
     if (step > 0) {
       window.scrollTo(0, 0);
@@ -473,7 +425,6 @@ const useOrganizerSignup = () => {
     }
   }, [step]);
   
-  // Réinitialiser le formulaire
   const resetForm = useCallback(() => {
     formValues.current = {...ORGANIZER_FORM_FIELDS};
     
@@ -497,7 +448,6 @@ const useOrganizerSignup = () => {
     }, 0);
   }, []);
   
-  // Soumettre le formulaire
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     
@@ -530,15 +480,12 @@ const useOrganizerSignup = () => {
     setErrorMessage('');
     
     try {
-      // Préparation des données à envoyer
       const data = new FormData();
       
-      // Ajouter le logo si présent
       if (formValues.current.organizationLogo) {
         data.append('organizationLogo', formValues.current.organizationLogo);
       }
       
-      // Liste des champs à envoyer (avec username comme requis par le backend)
       const fieldsToSubmit = {
         organizationName: formValues.current.organizationName,
         organizationAddress: formValues.current.organizationAddress,
@@ -548,14 +495,13 @@ const useOrganizerSignup = () => {
         contactPhoneCode: formValues.current.contactPhoneCode,
         website: formValues.current.website || '',
         organizationDescription: formValues.current.organizationDescription || '',
-        username: formValues.current.username, // Requis par le backend
+        username: formValues.current.username,
         email: formValues.current.email,
         password: formValues.current.password,
         consent: formValues.current.consent,
         dataConsent: formValues.current.dataConsent
       };
       
-      // Ajouter les champs au FormData
       Object.entries(fieldsToSubmit).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           if (typeof value === 'boolean') {
@@ -566,7 +512,6 @@ const useOrganizerSignup = () => {
         }
       });
       
-      // Log pour débogage
       console.log("Form data being sent for organizer:");
       for (let pair of data.entries()) {
         console.log(pair[0] + ': ' + pair[1]);
@@ -580,8 +525,8 @@ const useOrganizerSignup = () => {
         isClosable: true,
       });
       
-      // Envoyer la requête
-      const response = await axios.post(`${API_URL}/organizer-signup`, data, {
+      // Correction de l'URL pour utiliser le bon endpoint
+      const response = await axios.post(`${API_URL}/auth/organizer-signup`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -651,7 +596,6 @@ const useOrganizerSignup = () => {
     }
   }, [validateCurrentStep, errors, toast, registrationStatus]);
   
-  // API du hook
   return {
     step,
     formData: formValues.current,

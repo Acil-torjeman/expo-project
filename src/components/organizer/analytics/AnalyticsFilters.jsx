@@ -10,7 +10,6 @@ import {
   Icon,
   useColorModeValue
 } from '@chakra-ui/react';
-import { FiRefreshCw } from 'react-icons/fi';
 
 const AnalyticsFilters = ({ events, filters, updateFilters, refreshData }) => {
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -25,7 +24,7 @@ const AnalyticsFilters = ({ events, filters, updateFilters, refreshData }) => {
       borderColor={borderColor}
       mb={4}
     >
-      <Flex direction={{ base: 'column', md: 'row' }} gap={4} align="flex-end">
+      <Flex direction={{ base: 'column', md: 'row' }} gap={2} align="flex-end">
         <FormControl>
           <FormLabel>Event</FormLabel>
           <Select
@@ -55,7 +54,6 @@ const AnalyticsFilters = ({ events, filters, updateFilters, refreshData }) => {
         </FormControl>
         
         <Button 
-          leftIcon={<Icon as={FiRefreshCw} />} 
           colorScheme="teal" 
           onClick={refreshData}
         >

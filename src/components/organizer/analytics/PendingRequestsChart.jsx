@@ -54,8 +54,8 @@ const PendingRequestsChart = ({ data }) => {
         {
           label: 'Pending Requests',
           data: values,
-          backgroundColor: '#F6AD55', // orange.300
-          borderColor: '#DD6B20', // orange.600
+          backgroundColor: '#F6AD55', 
+          borderColor: '#DD6B20', 
           borderWidth: 1
         }
       ]

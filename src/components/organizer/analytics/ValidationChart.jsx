@@ -10,16 +10,13 @@ const ValidationChart = ({ data }) => {
   useEffect(() => {
     if (!chartRef.current) return;
 
-    // If chart already exists, destroy it
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
 
     const ctx = chartRef.current.getContext('2d');
     
-    // Check if we have valid data
     if (!data || !data.kpis || !data.kpis.validatedBeforeDeadline) {
-      // Create empty chart
       chartInstance.current = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -40,12 +37,8 @@ const ValidationChart = ({ data }) => {
       return;
     }
     
-    // Get validation rate from real data
     const validationRate = data.kpis.validatedBeforeDeadline.value;
-    
-    // Ensure validationRate is a number between 0 and 100
-    const safeRate = isNaN(validationRate) ? 0 : 
-                     Math.min(100, Math.max(0, validationRate));
+    const safeRate = isNaN(validationRate) ? 0 : Math.min(100, Math.max(0, validationRate));
     
     const chartData = {
       labels: ['Before Deadline', 'After Deadline'],
@@ -87,7 +80,6 @@ const ValidationChart = ({ data }) => {
     };
   }, [data]);
 
-  // If no data available, show a message
   if (!data || !data.kpis || !data.kpis.validatedBeforeDeadline) {
     return (
       <Box height="300px" display="flex" alignItems="center" justifyContent="center">
@@ -96,7 +88,6 @@ const ValidationChart = ({ data }) => {
     );
   }
 
-  // Add a center label with the percentage
   const percentValue = data.kpis.validatedBeforeDeadline.value;
 
   return (
@@ -107,7 +98,7 @@ const ValidationChart = ({ data }) => {
         top="0" 
         left="0" 
         right="0" 
-        bottom="40px" // Leave space for the legend
+        bottom="40px"
       >
         <Text 
           fontSize="2xl" 

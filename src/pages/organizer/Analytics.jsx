@@ -5,7 +5,6 @@ import {
   Grid,
   Heading,
   Text,
-  Flex,
   SimpleGrid,
   Skeleton,
   useColorModeValue,
@@ -18,9 +17,9 @@ import {
 import { 
   FiClock, 
   FiDollarSign, 
-  FiUsers, 
   FiPackage,
-  FiRefreshCw 
+  FiRefreshCw,
+  FiHome
 } from 'react-icons/fi';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import useAnalytics from '../../hooks/useAnalytics';
@@ -29,8 +28,9 @@ import KpiCard from '../../components/organizer/analytics/KpiCard';
 import ChartContainer from '../../components/organizer/analytics/ChartContainer';
 import TimeProcessingChart from '../../components/organizer/analytics/TimeProcessingChart';
 import PaymentTimeChart from '../../components/organizer/analytics/PaymentTimeChart';
-import EquipmentReservedChart from '../../components/organizer/analytics/EquipmentReservedChart';
 import RevenueChart from '../../components/organizer/analytics/RevenueChart';
+import ValidationChart from '../../components/organizer/analytics/ValidationChart';
+import StandsOccupationChart from '../../components/organizer/analytics/StandsOccupationChart';
 import PendingRequestsChart from '../../components/organizer/analytics/PendingRequestsChart';
 
 const Analytics = () => {
@@ -44,9 +44,6 @@ const Analytics = () => {
     refreshData
   } = useAnalytics();
   
-  const bgColor = useColorModeValue('gray.50', 'gray.900');
-  
-  // Helper function to render skeleton or content
   const renderWithSkeleton = (content) => {
     if (loading) {
       return <Skeleton height="100%" borderRadius="lg" />;
@@ -54,7 +51,6 @@ const Analytics = () => {
     return content;
   };
 
-  // Log data for debugging
   useEffect(() => {
     if (analyticsData) {
       console.log('Analytics data in component:', analyticsData);
@@ -63,14 +59,12 @@ const Analytics = () => {
 
   return (
     <DashboardLayout title="Analytics Dashboard">
-      <Box p={4} maxW="7xl" mx="auto">
-        {/* Header */}
+      <Box p={6} maxW="7xl" mx="auto">
         <Heading size="lg" mb={2}>Analytics Dashboard</Heading>
-        <Text color="gray.500" mb={6}>
+        <Text color="gray.500" mb={8}>
           Monitor event performance and revenue metrics
         </Text>
         
-        {/* Filters */}
         <AnalyticsFilters 
           events={events}
           filters={filters}
@@ -78,7 +72,6 @@ const Analytics = () => {
           refreshData={refreshData}
         />
         
-        {/* Display error if any */}
         {error && (
           <Alert status="error" mb={6} borderRadius="lg">
             <AlertIcon />
@@ -90,7 +83,6 @@ const Analytics = () => {
           </Alert>
         )}
         
-        {/* No Data Alert */}
         {!loading && !error && (!analyticsData || !analyticsData.kpis) && (
           <Alert status="info" mb={6} borderRadius="lg">
             <AlertIcon />
@@ -101,14 +93,13 @@ const Analytics = () => {
           </Alert>
         )}
         
-        {/* KPI Cards */}
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 5 }} spacing={4} mb={6}>
+        {/* 5 KPI Cards */}
+        <SimpleGrid columns={{ base: 1, md: 2, xl: 5 }} spacing={6} mb={8}>
           {renderWithSkeleton(
             <KpiCard
               title="Avg. Processing Time"
               value={analyticsData?.kpis?.processingTime?.value || 0}
               unit="hours"
-              trend={analyticsData?.kpis?.processingTime?.trend || 0}
               icon={FiClock}
               color="teal"
             />
@@ -119,7 +110,6 @@ const Analytics = () => {
               title="Avg. Payment Time"
               value={analyticsData?.kpis?.paymentTime?.value || 0}
               unit="hours"
-              trend={analyticsData?.kpis?.paymentTime?.trend || 0}
               icon={FiClock}
               color="blue"
             />
@@ -130,7 +120,6 @@ const Analytics = () => {
               title="Equipment Reserved"
               value={analyticsData?.kpis?.equipmentReserved?.value || 0}
               unit="count"
-              trend={analyticsData?.kpis?.equipmentReserved?.trend || 0}
               icon={FiPackage}
               color="green"
             />
@@ -141,7 +130,6 @@ const Analytics = () => {
               title="Total Revenue"
               value={analyticsData?.kpis?.totalRevenue?.value || 0}
               unit="currency"
-              trend={analyticsData?.kpis?.totalRevenue?.trend || 0}
               icon={FiDollarSign}
               color="purple"
             />
@@ -149,19 +137,17 @@ const Analytics = () => {
           
           {renderWithSkeleton(
             <KpiCard
-              title="Pending Requests"
-              value={analyticsData?.kpis?.pendingRequests?.value || 0}
+              title="Stands Reserved 30 Days Before"
+              value={analyticsData?.kpis?.standsReserved30Days?.value || 0}
               unit="count"
-              trend={analyticsData?.kpis?.pendingRequests?.trend || 0}
-              icon={FiUsers}
+              icon={FiHome}
               color="orange"
             />
           )}
         </SimpleGrid>
         
-        {/* Charts Section */}
-        <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={6} mb={6}>
-          {/* Processing Time Chart */}
+        {/* Main Charts Section */}
+        <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8} mb={8}>
           {renderWithSkeleton(
             <ChartContainer 
               title="Registration Processing Time" 
@@ -171,7 +157,6 @@ const Analytics = () => {
             </ChartContainer>
           )}
           
-          {/* Revenue Chart */}
           {renderWithSkeleton(
             <ChartContainer 
               title="Revenue Overview"
@@ -182,29 +167,44 @@ const Analytics = () => {
           )}
         </Grid>
         
-        {/* Secondary Charts */}
-        <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6} mb={6}>
-          {/* Payment Time Chart */}
+        {/* Secondary Charts - Well organized 2x2 grid */}
+        <Grid templateColumns={{ base: "1fr", lg: "repeat(2, 1fr)" }} gap={8} mb={8}>
           {renderWithSkeleton(
-            <ChartContainer title="Payment Timing Distribution">
+            <ChartContainer 
+              title="Payment Timing Distribution"
+              description="Distribution of payment times across different periods"
+            >
               <PaymentTimeChart data={analyticsData} />
             </ChartContainer>
           )}
           
-          {/* Equipment Reserved Chart */}
           {renderWithSkeleton(
-            <ChartContainer title="Equipment Reserved">
-              <EquipmentReservedChart data={analyticsData} />
-            </ChartContainer>
-          )}
-          
-          {/* Pending Requests Chart */}
-          {renderWithSkeleton(
-            <ChartContainer title="Pending Requests">
+            <ChartContainer 
+              title="Pending Requests"
+              description="Number of pending registration requests over time"
+            >
               <PendingRequestsChart data={analyticsData} />
             </ChartContainer>
           )}
-        </SimpleGrid>
+          
+          {renderWithSkeleton(
+            <ChartContainer 
+              title="Stands Occupation"
+              description="Current occupation rate of event stands"
+            >
+              <StandsOccupationChart data={analyticsData} />
+            </ChartContainer>
+          )}
+          
+          {renderWithSkeleton(
+            <ChartContainer 
+              title="Validated Before Deadline"
+              description="Percentage of registrations validated before deadline"
+            >
+              <ValidationChart data={analyticsData} />
+            </ChartContainer>
+          )}
+        </Grid>
       </Box>
     </DashboardLayout>
   );

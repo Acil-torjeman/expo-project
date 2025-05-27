@@ -5,8 +5,6 @@ import {
   Stat,
   StatLabel,
   StatNumber,
-  StatHelpText,
-  StatArrow,
   Flex,
   Icon,
   useColorModeValue
@@ -15,7 +13,6 @@ import {
 const KpiCard = ({ 
   title, 
   value, 
-  trend = 0, 
   unit = '', 
   icon, 
   color = 'teal',
@@ -24,7 +21,6 @@ const KpiCard = ({
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   
-  // Format value based on unit
   const formattedValue = () => {
     if (unit === 'hours') {
       return `${value} hrs`;
@@ -53,7 +49,6 @@ const KpiCard = ({
       overflow="hidden"
       {...props}
     >
-      {/* Background accent */}
       <Box 
         position="absolute" 
         top={0} 
@@ -69,12 +64,6 @@ const KpiCard = ({
           <StatNumber fontSize="2xl" fontWeight="bold" color={`${color}.600`}>
             {formattedValue()}
           </StatNumber>
-          {trend !== 0 && (
-            <StatHelpText>
-              <StatArrow type={trend > 0 ? 'increase' : 'decrease'} />
-              {Math.abs(trend).toFixed(1)}%
-            </StatHelpText>
-          )}
         </Stat>
         {icon && (
           <Flex

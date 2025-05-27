@@ -219,13 +219,6 @@ const UserTable = ({
           </MenuButton>
           
           <MenuList minWidth="170px">
-            <MenuItem icon={<FiEye />} onClick={() => onUserAction('view', user)}>
-              View Details
-            </MenuItem>
-            
-            <MenuItem icon={<FiEdit />} onClick={() => onUserAction('edit', user)}>
-              Edit
-            </MenuItem>
             
             {user.status === UserStatus.ACTIVE ? (
               <MenuItem 
