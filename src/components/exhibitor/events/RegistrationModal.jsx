@@ -86,7 +86,7 @@ const RegistrationModal = ({
   };
   
   const goToProfile = () => {
-    navigate('/exhibitor/profile');
+    navigate('/profile');
     onClose();
   };
   
