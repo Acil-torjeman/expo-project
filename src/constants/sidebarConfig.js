@@ -68,7 +68,7 @@ const sidebarConfig = {
     { 
       path: '/organizer/plans', 
       icon: FiMap, 
-      label: 'Floor Planssssssssss',
+      label: 'Floor Plans',
     },
     { 
       path: '/organizer/equipment', 
