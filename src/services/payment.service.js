@@ -46,7 +46,7 @@ class PaymentService {
    */
   async getMyPayments() {
     try {
-      const response = await api.get('/payments/my-payments');
+      const response = await api.get('/payments/my-payments'); 
       return response.data;
     } catch (error) {
       console.error('Error fetching payments:', error.message);
