@@ -45,6 +45,7 @@ const StandFormModal = ({
     area: 1,
     basePrice: 0,
     type: StandType.STANDARD,
+
     description: '',
     status: StandStatus.AVAILABLE,
     features: [''],
@@ -318,6 +319,23 @@ const StandFormModal = ({
                     </option>
                   ))}
                 </Select>
+                {formData.type === StandType.PREMIUM && (
+                  <FormControl mt={4}>
+                    
+                    <RadioGroup 
+                      value={formData.basePrice.toString()}
+                      onChange={(val) => setFormData({...formData, basePrice: parseInt(val)})}
+                    >
+                      <Stack direction="row">
+                        {PREMIUM_PRICES.map(price => (
+                          <Radio key={price} value={price.toString()}>
+                            ${price}
+                          </Radio>
+                        ))}
+                      </Stack>
+                    </RadioGroup>
+                  </FormControl>
+                )}
                 <FormErrorMessage>{errors.type}</FormErrorMessage>
               </FormControl>
               

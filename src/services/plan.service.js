@@ -36,8 +36,6 @@ class PlanService {
       return null;
     }
   }
-
-  // Create new plan with PDF file
  
 // Create new plan with PDF file
 async createPlan(planData, pdfFile) {

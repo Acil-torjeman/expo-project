@@ -32,12 +32,14 @@ import RevenueChart from '../../components/organizer/analytics/RevenueChart';
 import ValidationChart from '../../components/organizer/analytics/ValidationChart';
 import StandsOccupationChart from '../../components/organizer/analytics/StandsOccupationChart';
 import PendingRequestsChart from '../../components/organizer/analytics/PendingRequestsChart';
+import ParticipantsPieChart from '../../components/organizer/analytics/ParticipantsPieChart';
 
 const Analytics = () => {
   const {
     loading,
     error,
     analyticsData,
+    participantsByEvent,
     events,
     filters,
     updateFilters,
@@ -92,6 +94,7 @@ const Analytics = () => {
             </AlertDescription>
           </Alert>
         )}
+        
         
         {/* 5 KPI Cards */}
         <SimpleGrid columns={{ base: 1, md: 2, xl: 5 }} spacing={6} mb={8}>
@@ -157,6 +160,12 @@ const Analytics = () => {
             </ChartContainer>
           )}
           
+          {renderWithSkeleton(
+            <ChartContainer title="Participants by Event">
+              <ParticipantsPieChart data={participantsByEvent} />
+            </ChartContainer>
+          )}
+
           {renderWithSkeleton(
             <ChartContainer 
               title="Revenue Overview"

@@ -39,6 +39,19 @@ const useAnalytics = () => {
     }
   }, [user]);
 
+     const fetchParticipantsByEvent = useCallback(async () => {
+  try {
+    console.log('Fetching participants by event...');
+    const response = await api.get('/analytics/participants-by-event');
+    console.log('Participants data:', response.data);
+    setAnalyticsData(prev => ({
+      ...prev,
+      participantsByEvent: response.data
+    }));
+  } catch (error) {
+    console.error('Error fetching participants by event:', error);
+  }
+}, []);   
   // Fetch analytics data based on filters
   const fetchAnalytics = useCallback(async () => {
     if (!user?.id) return;
@@ -121,7 +134,8 @@ const useAnalytics = () => {
   // Effect to fetch analytics data when filters change
   useEffect(() => {
     fetchAnalytics();
-  }, [fetchAnalytics]);
+    fetchParticipantsByEvent();
+  }, [fetchAnalytics, fetchParticipantsByEvent, filters]);
 
   // Update filters
   const updateFilters = useCallback((newFilters) => {
@@ -136,7 +150,9 @@ const useAnalytics = () => {
     events,
     filters,
     updateFilters,
-    refreshData: fetchAnalytics
+    refreshData: fetchAnalytics,
+    participantsByEvent: analyticsData?.participantsByEvent || { labels: [], data: [], total: 0 },
+    fetchParticipantsByEvent
   };
 };
 

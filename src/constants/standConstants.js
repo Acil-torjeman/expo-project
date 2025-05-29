@@ -9,6 +9,7 @@ export const StandStatus = {
     UNAVAILABLE: 'unavailable'
   };
   
+
   /**
    * Types of stands
    */
@@ -18,6 +19,8 @@ export const StandStatus = {
     CORNER: 'corner',
     CUSTOM: 'custom'
   };
+  
+  export const PREMIUM_PRICES = [400, 600, 700, 800];
   
   /**
    * Get color scheme based on stand status
